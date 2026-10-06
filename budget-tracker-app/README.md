@@ -13,7 +13,6 @@ A free, multi-user budget tracker (Next.js + Supabase).
 Copy `.env.local.example` to `.env.local` and fill in the two Supabase values from step 1.
 
 ## 3. Run locally
-
 ```
 npm install
 npm run dev
