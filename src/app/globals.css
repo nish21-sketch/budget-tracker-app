@@ -479,6 +479,9 @@ canvas { max-width: 100%; }
   font-size: 12px;
   letter-spacing: 0.02em;
 }
+.budget-table tr.type-row-toggle:hover td {
+  filter: brightness(0.97);
+}
 
 .budget-table tr.spend-row td {
   background: #fef3c7;
