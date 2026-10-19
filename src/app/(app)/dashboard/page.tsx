@@ -1,12 +1,16 @@
 import { getCategories, getIncome, getSoFarByCategory, getProfile } from "@/lib/data";
-import { fmt, fmtCompact, firstOfMonth, daysInMonth, monthLabel } from "@/lib/utils";
+import { fmt, fmtCompact, firstOfMonth, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const [categories, income, soFarMap, profile] = await Promise.all([
+  const now = firstOfMonth();
+  const prevMonth = addMonths(now, -1);
+
+  const [categories, income, soFarMap, profile, prevSoFarMap] = await Promise.all([
     getCategories(),
     getIncome(),
     getSoFarByCategory(),
     getProfile(),
+    getSoFarByCategory(prevMonth),
   ]);
   const currency = profile?.currency ?? "₹";
   const cats = categories.map((c) => ({ ...c, soFar: soFarMap[c.id] ?? 0 }));
@@ -16,9 +20,7 @@ export default async function DashboardPage() {
   const cashInHand = income - totalExpense - totalInvestment;
 
   const emiCats = cats.filter((c) => c.end_date);
-  const now = firstOfMonth();
 
-  // Budget pace
   const today = new Date();
   const timePct = Math.round((today.getDate() / daysInMonth(now)) * 100);
   const totalPlanAll = cats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
@@ -30,6 +32,13 @@ export default async function DashboardPage() {
   const heatScaleMax = Math.max(1, ...sortedHeat.map((c) => Math.max(Number(c.ideal_plan_amount), c.soFar)));
   const topCat = [...cats].sort((a, b) => b.soFar - a.soFar)[0];
   const overspendCat = cats.find((c) => c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0);
+
+  const prevTotalSpent = cats.reduce((s, c) => s + (prevSoFarMap[c.id] ?? 0), 0);
+  const trendPct = prevTotalSpent > 0 ? Math.round(((totalSpentAll - prevTotalSpent) / prevTotalSpent) * 100) : null;
+
+  const dailyRate = today.getDate() > 0 ? totalSpentAll / today.getDate() : 0;
+  const projectedTotal = Math.round(dailyRate * daysInMonth(now));
+  const projDeltaPct = totalPlanAll > 0 ? Math.round(((projectedTotal - totalPlanAll) / totalPlanAll) * 100) : null;
 
   return (
     <div>
@@ -89,11 +98,21 @@ export default async function DashboardPage() {
         </div>
 
         <div className="card">
-          <h3>Insights</h3>
+          <h3>Smart Insights</h3>
           <div className="insights">
             {topCat && <div className="insight-line">💡 Top expense category this month: <b>{topCat.name} ({fmt(topCat.soFar, currency)})</b></div>}
             {overspendCat && (
               <div className="insight-line warn">⚠️ You&apos;ve gone over plan on <b>{overspendCat.name}</b> — {fmt(overspendCat.soFar, currency)} logged vs {fmt(Number(overspendCat.ideal_plan_amount), currency)} planned.</div>
+            )}
+            {trendPct !== null && (
+              <div className={`insight-line ${trendPct > 15 ? "warn" : ""}`}>
+                {trendPct >= 0 ? "📈" : "📉"} You&apos;ve spent {fmt(totalSpentAll, currency)} so far this month — {Math.abs(trendPct)}% {trendPct >= 0 ? "more" : "less"} than you spent all of last month ({fmt(prevTotalSpent, currency)}).
+              </div>
+            )}
+            {totalPlanAll > 0 && projDeltaPct !== null && (
+              <div className={`insight-line ${projDeltaPct > 0 ? "warn" : ""}`}>
+                🔮 At this pace, you&apos;re projected to spend {fmt(projectedTotal, currency)} by month-end — {projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your {fmt(totalPlanAll, currency)} plan.
+              </div>
             )}
           </div>
         </div>
