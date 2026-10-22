@@ -15,11 +15,13 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
     setOpen((o) => ({ ...o, [type]: !o[type] }));
   }
 
-  const heatScaleMax = Math.max(1, ...cats.map((c) => Math.max(Number(c.ideal_plan_amount), c.soFar)));
+  const activeCats = cats.filter((c) => Number(c.ideal_plan_amount) > 0 || c.soFar > 0);
+
+  const heatScaleMax = Math.max(1, ...activeCats.map((c) => Math.max(Number(c.ideal_plan_amount), c.soFar)));
   const typeScaleMax = Math.max(
     1,
     ...TYPES.map((t) => {
-      const list = cats.filter((c) => c.type === t);
+      const list = activeCats.filter((c) => c.type === t);
       return Math.max(list.reduce((s, c) => s + Number(c.ideal_plan_amount), 0), list.reduce((s, c) => s + c.soFar, 0));
     })
   );
@@ -29,7 +31,7 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
       <h3>Expense Breakdown <span className="sub">Blue = spent within plan, red = over, grey = remaining</span></h3>
       <div className="heat-list">
         {TYPES.map((type) => {
-          const typeCats = cats.filter((c) => c.type === type);
+          const typeCats = activeCats.filter((c) => c.type === type);
           if (typeCats.length === 0) return null;
           const isOpen = !!open[type];
           const typeSpent = typeCats.reduce((s, c) => s + c.soFar, 0);
