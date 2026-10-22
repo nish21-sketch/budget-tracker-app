@@ -21,6 +21,8 @@ function catNameFromRow(row: RecentRow): string {
   return Array.isArray(row.categories) ? (row.categories[0]?.name ?? "—") : row.categories.name;
 }
 
+const PAGE_SIZE = 10;
+
 export default function LogForm({
   categories,
   currency,
@@ -32,6 +34,7 @@ export default function LogForm({
 }) {
   const [cats, setCats] = useState(categories);
   const [recent, setRecent] = useState<RecentRow[]>(initialRecent);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
@@ -72,6 +75,9 @@ export default function LogForm({
     });
   }
 
+  const visibleRecent = recent.slice(0, visibleCount);
+  const hasMore = visibleCount < recent.length;
+
   return (
     <div className="log-wrap">
       <div className="log-header">
@@ -86,43 +92,43 @@ export default function LogForm({
         {cats.map((c) => {
           const over = c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0;
           return (
-            <div
-              className={`log-row ${over ? "over" : ""}`}
-              key={c.id}
-              style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 8 }}
-            >
-              <div className="cat" style={{ flex: "1 1 auto", minWidth: 0 }}>
-                {c.name}
-                <span className="so-far">So far: {fmt(c.soFar, currency)}{over ? " — over plan" : ""}</span>
+            <div className={`log-row ${over ? "over" : ""}`} key={c.id} style={{ display: "block", padding: "10px 0" }}>
+              <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div className="cat" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                  {c.name}
+                  <span className="so-far">So far: {fmt(c.soFar, currency)}{over ? " — over plan" : ""}</span>
+                </div>
+                <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
+                  <span className="currency">{currency}</span>
+                  <input
+                    className="log-input"
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={inputs[c.id] ?? ""}
+                    onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                    onKeyDown={(e) => handleKeyDown(e, c)}
+                    disabled={isPending}
+                    style={{ boxSizing: "border-box" }}
+                  />
+                </div>
               </div>
               <input
                 type="text"
                 placeholder="Note (optional)"
                 value={notes[c.id] ?? ""}
                 onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                disabled={isPending}
                 style={{
-                  flex: "0 1 110px",
-                  minWidth: 70,
-                  border: "1px solid #d1d5db",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  border: "1px solid #e5e7eb",
                   borderRadius: 8,
                   padding: "6px 8px",
                   fontSize: 12,
+                  marginTop: 6,
                 }}
-                disabled={isPending}
               />
-              <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
-                <span className="currency">{currency}</span>
-                <input
-                  className="log-input"
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={inputs[c.id] ?? ""}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                  onKeyDown={(e) => handleKeyDown(e, c)}
-                  disabled={isPending}
-                />
-              </div>
             </div>
           );
         })}
@@ -130,39 +136,60 @@ export default function LogForm({
 
       <div className="recent-box">
         <h4>Recent logs</h4>
-        {recent.length === 0 ? (
+        {visibleRecent.length === 0 ? (
           <div style={{ color: "#9ca3af", fontSize: 13 }}>Nothing logged yet.</div>
         ) : (
-          recent.map((r) => (
-            <div
-              className="recent-item"
-              key={r.id}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, opacity: removingId === r.id ? 0.5 : 1 }}
-            >
-              <span>
-                {catNameFromRow(r)} — {fmt(Number(r.amount), currency)}
-                {r.note ? <span style={{ color: "#9ca3af" }}> · {r.note}</span> : null}
-                <span style={{ color: "#9ca3af" }}> · {new Date(r.logged_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-              </span>
+          <>
+            {visibleRecent.map((r) => (
+              <div
+                className="recent-item"
+                key={r.id}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, opacity: removingId === r.id ? 0.5 : 1 }}
+              >
+                <span>
+                  {catNameFromRow(r)} — {fmt(Number(r.amount), currency)}
+                  {r.note ? <span style={{ color: "#9ca3af" }}> · {r.note}</span> : null}
+                  <span style={{ color: "#9ca3af" }}> · {new Date(r.logged_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeRecent(r)}
+                  disabled={isPending}
+                  style={{
+                    border: "1px solid #fca5a5",
+                    color: "#dc2626",
+                    background: "white",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            {hasMore && (
               <button
                 type="button"
-                onClick={() => removeRecent(r)}
-                disabled={isPending}
+                onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
                 style={{
-                  border: "1px solid #fca5a5",
-                  color: "#dc2626",
-                  background: "white",
-                  borderRadius: 6,
-                  padding: "4px 10px",
+                  width: "100%",
+                  marginTop: 8,
+                  background: "none",
+                  border: "1px dashed #d1d5db",
+                  borderRadius: 8,
+                  padding: "8px",
                   fontSize: 12,
+                  color: "var(--accent, #6366f1)",
                   cursor: "pointer",
-                  flexShrink: 0,
                 }}
               >
-                Remove
+                Show 10 more
               </button>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
     </div>

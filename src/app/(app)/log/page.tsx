@@ -6,7 +6,7 @@ export default async function LogPage() {
     getCategories(),
     getSoFarByCategory(),
     getProfile(),
-    getRecentTransactions(10),
+    getRecentTransactions(50),
   ]);
   const cats = categories.map((c) => ({ ...c, soFar: soFarMap[c.id] ?? 0 }));
   return <LogForm categories={cats} currency={profile?.currency ?? "₹"} initialRecent={recent} />;

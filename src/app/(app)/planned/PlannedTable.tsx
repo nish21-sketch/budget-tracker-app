@@ -40,6 +40,18 @@ export default function PlannedTable({
     return list.reduce((s, c) => s + planForMonth(c, m), 0);
   }
 
+  function totalExpense(m: Date, i: number) {
+    return i === 0
+      ? cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0)
+      : cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
+  }
+
+  function totalInvest(m: Date, i: number) {
+    return i === 0
+      ? cats.filter((c) => c.type === "Investment").reduce((s, c) => s + c.soFar, 0)
+      : cats.filter((c) => c.type === "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
+  }
+
   return (
     <div className="budget-scroll">
       <table className="budget-table">
@@ -104,32 +116,14 @@ export default function PlannedTable({
           </tr>
           <tr className="total-row">
             <td>Total Expense</td>
-            {months.map((m, i) => {
-              const total = i === 0
-                ? cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0)
-                : cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
-              return <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(total, currency)}</td>;
-            })}
-          </tr>
-          <tr className="total-row">
-            <td>Total Investment</td>
-            {months.map((m, i) => {
-              const total = i === 0
-                ? cats.filter((c) => c.type === "Investment").reduce((s, c) => s + c.soFar, 0)
-                : cats.filter((c) => c.type === "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
-              return <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(total, currency)}</td>;
-            })}
+            {months.map((m, i) => (
+              <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(totalExpense(m, i), currency)}</td>
+            ))}
           </tr>
           <tr className="total-row">
             <td>Cash in Hand</td>
             {months.map((m, i) => {
-              const expense = i === 0
-                ? cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0)
-                : cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
-              const invest = i === 0
-                ? cats.filter((c) => c.type === "Investment").reduce((s, c) => s + c.soFar, 0)
-                : cats.filter((c) => c.type === "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
-              const cash = income - expense - invest;
+              const cash = income - totalExpense(m, i) - totalInvest(m, i);
               return (
                 <td key={i} className={i === 0 ? "current-col" : ""} style={{ color: cash < 0 ? "#dc2626" : "#16a34a" }}>
                   {fmt(cash, currency)}

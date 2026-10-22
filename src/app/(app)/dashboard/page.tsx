@@ -1,5 +1,6 @@
 import { getCategories, getIncome, getSoFarByCategory, getProfile } from "@/lib/data";
-import { fmt, fmtCompact, firstOfMonth, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
+import { fmt, firstOfMonth, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
+import ExpenseBreakdown from "./ExpenseBreakdown";
 
 export default async function DashboardPage() {
   const now = firstOfMonth();
@@ -18,6 +19,8 @@ export default async function DashboardPage() {
   const totalExpense = cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0);
   const totalInvestment = cats.filter((c) => c.type === "Investment").reduce((s, c) => s + c.soFar, 0);
   const cashInHand = income - totalExpense - totalInvestment;
+  const spendBudget = cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
+  const overBudget = spendBudget > 0 && totalExpense > spendBudget;
 
   const emiCats = cats.filter((c) => c.end_date);
 
@@ -28,8 +31,6 @@ export default async function DashboardPage() {
   const spendPct = totalPlanAll > 0 ? Math.round((totalSpentAll / totalPlanAll) * 100) : 0;
   const paceDelta = spendPct - timePct;
 
-  const sortedHeat = [...cats].sort((a, b) => Number(b.ideal_plan_amount) - Number(a.ideal_plan_amount)).slice(0, 8);
-  const heatScaleMax = Math.max(1, ...sortedHeat.map((c) => Math.max(Number(c.ideal_plan_amount), c.soFar)));
   const topCat = [...cats].sort((a, b) => b.soFar - a.soFar)[0];
   const overspendCat = cats.find((c) => c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0);
 
@@ -44,7 +45,13 @@ export default async function DashboardPage() {
     <div>
       <div className="kpi-row">
         <div className="card kpi-card"><div className="label">Monthly Income</div><div className="value">{fmt(income, currency)}</div></div>
-        <div className="card kpi-card"><div className="label">Expense (so far)</div><div className="value">{fmt(totalExpense, currency)}</div></div>
+        <div className="card kpi-card">
+          <div className="label">Spend Budget</div>
+          <div className="value">{fmt(spendBudget, currency)}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2, color: overBudget ? "#dc2626" : "#16a34a" }}>
+            Spent: {fmt(totalExpense, currency)}
+          </div>
+        </div>
         <div className="card kpi-card"><div className="label">Investment (so far)</div><div className="value">{fmt(totalInvestment, currency)}</div></div>
         <div className="card kpi-card"><div className="label">Cash in Hand</div><div className="value" style={{ color: cashInHand < 0 ? "#dc2626" : "#16a34a" }}>{fmt(cashInHand, currency)}</div></div>
       </div>
@@ -118,34 +125,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="card">
-        <h3>Expense Breakdown <span className="sub">Spent (blue) vs. remaining budget (gray) vs. over (red)</span></h3>
-        <div className="heat-list">
-          {sortedHeat.map((c) => {
-            const plan = Number(c.ideal_plan_amount);
-            const spentWithinPlan = Math.min(c.soFar, plan);
-            const overAmount = Math.max(0, c.soFar - plan);
-            const remaining = Math.max(0, plan - c.soFar);
-            const spentPct = (spentWithinPlan / heatScaleMax) * 100;
-            const overPct = (overAmount / heatScaleMax) * 100;
-            const remainingPct = (remaining / heatScaleMax) * 100;
-            const over = overAmount > 0;
-            return (
-              <div className="heat-row" key={c.id}>
-                <div className="cat-name">{c.name}</div>
-                <div className="bar-track bar-stacked">
-                  <div className="bar-seg" style={{ width: `${spentPct}%`, background: "linear-gradient(90deg,#93c5fd,#3b82f6)" }} />
-                  {over && <div className="bar-seg" style={{ width: `${overPct}%`, background: "linear-gradient(90deg,#f87171,#dc2626)" }} />}
-                  {!over && remaining > 0 && <div className="bar-seg" style={{ width: `${remainingPct}%`, background: "#e5e7eb" }} />}
-                </div>
-                <div className="amt" style={{ color: over ? "#dc2626" : undefined }}>
-                  {fmtCompact(c.soFar, currency)} / {fmtCompact(plan, currency)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <ExpenseBreakdown cats={cats} currency={currency} />
     </div>
   );
 }
