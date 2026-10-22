@@ -58,7 +58,6 @@ export async function getSoFarByCategory(month: Date = firstOfMonth()): Promise<
     .select("category_id, amount")
     .eq("user_id", user.id)
     .eq("month", toDateInputValue(month));
-
   const map: Record<string, number> = {};
   (data ?? []).forEach((row) => {
     map[row.category_id] = (map[row.category_id] ?? 0) + Number(row.amount);
@@ -76,5 +75,18 @@ export async function getAllTransactions() {
     .eq("user_id", user.id)
     .order("month", { ascending: false })
     .order("logged_at", { ascending: false });
+  return data ?? [];
+}
+
+export async function getRecentTransactions(limit = 10) {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("transactions")
+    .select("id, amount, note, logged_at, category_id, categories(name)")
+    .eq("user_id", user.id)
+    .order("logged_at", { ascending: false })
+    .limit(limit);
   return data ?? [];
 }

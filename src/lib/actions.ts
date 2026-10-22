@@ -21,10 +21,8 @@ export async function completeOnboarding(
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-
   await supabase.from("profiles").update({ currency, onboarding_complete: true }).eq("id", user!.id);
   await supabase.from("income").update({ monthly_amount: monthlyIncome }).eq("user_id", user!.id);
-
   const rows = categories.map((c, i) => ({
     user_id: user!.id,
     name: c.name,
@@ -36,22 +34,36 @@ export async function completeOnboarding(
   if (rows.length > 0) {
     await supabase.from("categories").insert(rows);
   }
-
   redirect("/dashboard");
 }
 
-export async function logTransaction(categoryId: string, amount: number, month?: Date) {
+export async function logTransaction(categoryId: string, amount: number, note?: string, month?: Date) {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const { data } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: user!.id,
+      category_id: categoryId,
+      amount,
+      note: note || null,
+      month: toDateInputValue(month ?? firstOfMonth()),
+    })
+    .select("id, amount, note, logged_at, category_id")
+    .single();
+  revalidatePath("/log");
+  revalidatePath("/dashboard");
+  revalidatePath("/planned");
+  revalidatePath("/historic");
+  return data;
+}
 
-  await supabase.from("transactions").insert({
-    user_id: user!.id,
-    category_id: categoryId,
-    amount,
-    month: toDateInputValue(month ?? firstOfMonth()),
-  });
-
+export async function deleteTransaction(id: string) {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  await supabase.from("transactions").delete().eq("id", id).eq("user_id", user!.id);
   revalidatePath("/log");
   revalidatePath("/dashboard");
   revalidatePath("/planned");
@@ -75,7 +87,6 @@ export async function upsertCategory(
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-
   if (id) {
     await supabase
       .from("categories")
@@ -118,23 +129,19 @@ export async function moveCategory(id: string, direction: "up" | "down") {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-
   const { data: cats } = await supabase
     .from("categories")
     .select("id, sort_order")
     .eq("user_id", user!.id)
     .order("sort_order");
   if (!cats) return;
-
   const idx = cats.findIndex((c) => c.id === id);
   const swapIdx = direction === "up" ? idx - 1 : idx + 1;
   if (idx === -1 || swapIdx < 0 || swapIdx >= cats.length) return;
-
   const a = cats[idx];
   const b = cats[swapIdx];
   await supabase.from("categories").update({ sort_order: b.sort_order }).eq("id", a.id);
   await supabase.from("categories").update({ sort_order: a.sort_order }).eq("id", b.id);
-
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   revalidatePath("/planned");
