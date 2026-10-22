@@ -8,6 +8,46 @@ const TYPES = ["Fixed Deduction", "Fluid Essential", "Personal", "Investment"] a
 
 type CatWithSoFar = Category & { soFar: number };
 
+function DualBar({
+  label,
+  plan,
+  spent,
+  scaleMax,
+  currency,
+}: {
+  label: string;
+  plan: number;
+  spent: number;
+  scaleMax: number;
+  currency: string;
+}) {
+  const over = plan > 0 && spent > plan;
+  const planPct = (plan / scaleMax) * 100;
+  const spentPct = (spent / scaleMax) * 100;
+
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{label}</div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+        <div style={{ flex: 1, height: 10, background: "#eef0f5", borderRadius: 5, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${planPct}%`, background: "#3b82f6", borderRadius: 5 }} />
+        </div>
+        <span style={{ fontSize: 11, width: 56, textAlign: "right", color: "#374151" }}>{fmtCompact(plan, currency)}</span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, height: 10, background: "#eef0f5", borderRadius: 5, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${spentPct}%`, background: over ? "#dc2626" : "#16a34a", borderRadius: 5 }} />
+        </div>
+        <span style={{ fontSize: 11, width: 56, textAlign: "right", color: over ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+          {fmtCompact(spent, currency)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFar[]; currency: string }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
@@ -16,8 +56,7 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
   }
 
   const activeCats = cats.filter((c) => Number(c.ideal_plan_amount) > 0 || c.soFar > 0);
-
-  const heatScaleMax = Math.max(1, ...activeCats.map((c) => Math.max(Number(c.ideal_plan_amount), c.soFar)));
+  const scaleMax = Math.max(1, ...activeCats.map((c) => Math.max(Number(c.ideal_plan_amount), c.soFar)));
   const typeScaleMax = Math.max(
     1,
     ...TYPES.map((t) => {
@@ -28,56 +67,28 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
 
   return (
     <div className="card">
-      <h3>Expense Breakdown <span className="sub">Blue = spent within plan, red = over, grey = remaining</span></h3>
-      <div className="heat-list">
+      <h3>Expense Breakdown <span className="sub">Top bar = budget, bottom bar = spend (red if over, green if under)</span></h3>
+      <div>
         {TYPES.map((type) => {
           const typeCats = activeCats.filter((c) => c.type === type);
           if (typeCats.length === 0) return null;
           const isOpen = !!open[type];
           const typeSpent = typeCats.reduce((s, c) => s + c.soFar, 0);
           const typePlan = typeCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
-          const typeWithinPlan = Math.min(typeSpent, typePlan);
-          const typeOver = Math.max(0, typeSpent - typePlan);
-          const typeRemaining = Math.max(0, typePlan - typeSpent);
-          const typeOverFlag = typeOver > 0;
 
           return (
-            <div key={type}>
-              <div className="heat-row" onClick={() => toggle(type)} style={{ cursor: "pointer", fontWeight: 700 }}>
-                <div className="cat-name">
-                  <span style={{ display: "inline-block", width: 12, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
-                  {" "}{type}
-                </div>
-                <div className="bar-track bar-stacked">
-                  <div className="bar-seg" style={{ width: `${(typeWithinPlan / typeScaleMax) * 100}%`, background: "linear-gradient(90deg,#93c5fd,#3b82f6)" }} />
-                  {typeOverFlag && <div className="bar-seg" style={{ width: `${(typeOver / typeScaleMax) * 100}%`, background: "linear-gradient(90deg,#f87171,#dc2626)" }} />}
-                  {!typeOverFlag && typeRemaining > 0 && <div className="bar-seg" style={{ width: `${(typeRemaining / typeScaleMax) * 100}%`, background: "#e5e7eb" }} />}
-                </div>
-                <div className="amt" style={{ color: typeOverFlag ? "#dc2626" : undefined }}>
-                  {fmtCompact(typeSpent, currency)} / {fmtCompact(typePlan, currency)}
-                </div>
+            <div key={type} style={{ marginBottom: 14, borderBottom: "1px solid #f1f2f6", paddingBottom: 8 }}>
+              <div onClick={() => toggle(type)} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ display: "inline-block", width: 14, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>{type}</span>
               </div>
+              <DualBar label="" plan={typePlan} spent={typeSpent} scaleMax={typeScaleMax} currency={currency} />
 
-              {isOpen && typeCats.map((c) => {
-                const plan = Number(c.ideal_plan_amount);
-                const spentWithinPlan = Math.min(c.soFar, plan);
-                const overAmount = Math.max(0, c.soFar - plan);
-                const remaining = Math.max(0, plan - c.soFar);
-                const over = overAmount > 0;
-                return (
-                  <div className="heat-row" key={c.id} style={{ paddingLeft: 18 }}>
-                    <div className="cat-name" style={{ fontWeight: 500 }}>{c.name}</div>
-                    <div className="bar-track bar-stacked">
-                      <div className="bar-seg" style={{ width: `${(spentWithinPlan / heatScaleMax) * 100}%`, background: "linear-gradient(90deg,#93c5fd,#3b82f6)" }} />
-                      {over && <div className="bar-seg" style={{ width: `${(overAmount / heatScaleMax) * 100}%`, background: "linear-gradient(90deg,#f87171,#dc2626)" }} />}
-                      {!over && remaining > 0 && <div className="bar-seg" style={{ width: `${(remaining / heatScaleMax) * 100}%`, background: "#e5e7eb" }} />}
-                    </div>
-                    <div className="amt" style={{ color: over ? "#dc2626" : undefined }}>
-                      {fmtCompact(c.soFar, currency)} / {fmtCompact(plan, currency)}
-                    </div>
-                  </div>
-                );
-              })}
+              {isOpen && typeCats.map((c) => (
+                <div key={c.id} style={{ paddingLeft: 20, marginTop: 6 }}>
+                  <DualBar label={c.name} plan={Number(c.ideal_plan_amount)} spent={c.soFar} scaleMax={scaleMax} currency={currency} />
+                </div>
+              ))}
             </div>
           );
         })}
