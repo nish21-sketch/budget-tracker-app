@@ -29,13 +29,15 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
           const typePlan = typeCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
           return (
             <div key={type}>
-              <div className="heat-row" onClick={() => toggle(type)} style={{ cursor: "pointer", fontWeight: 700 }}>
-                <div className="cat-name">
+              <div
+                onClick={() => toggle(type)}
+                style={{ cursor: "pointer", fontWeight: 700, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 13 }}
+              >
+                <span>
                   <span style={{ display: "inline-block", width: 12, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
                   {" "}{type}
-                </div>
-                <div className="bar-track" />
-                <div className="amt">{fmtCompact(typeSpent, currency)} / {fmtCompact(typePlan, currency)}</div>
+                </span>
+                <span>{fmtCompact(typeSpent, currency)} / {fmtCompact(typePlan, currency)}</span>
               </div>
               {isOpen && typeCats.map((c) => {
                 const plan = Number(c.ideal_plan_amount);

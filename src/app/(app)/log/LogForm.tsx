@@ -97,11 +97,25 @@ export default function LogForm({
               key={c.id}
               style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6, overflowX: "auto", padding: "8px 0" }}
             >
-              <div className="cat" style={{ flex: "1 1 70px", minWidth: 60, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div className="cat" style={{ flex: "1 1 60px", minWidth: 50, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {c.name}
                 <span className="so-far" style={{ display: "block", fontSize: 11 }}>
                   So far: {fmt(c.soFar, currency)}{over ? " — over" : ""}
                 </span>
+              </div>
+              <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
+                <span className="currency">{currency}</span>
+                <input
+                  className="log-input"
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={inputs[c.id] ?? ""}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                  onKeyDown={(e) => handleKeyDown(e, c)}
+                  disabled={isPending}
+                  style={{ boxSizing: "border-box", width: 60 }}
+                />
               </div>
               <input
                 type="text"
@@ -119,20 +133,6 @@ export default function LogForm({
                   fontSize: 11,
                 }}
               />
-              <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
-                <span className="currency">{currency}</span>
-                <input
-                  className="log-input"
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={inputs[c.id] ?? ""}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                  onKeyDown={(e) => handleKeyDown(e, c)}
-                  disabled={isPending}
-                  style={{ boxSizing: "border-box", width: 60 }}
-                />
-              </div>
               <button
                 type="button"
                 onClick={() => submitFor(c)}
