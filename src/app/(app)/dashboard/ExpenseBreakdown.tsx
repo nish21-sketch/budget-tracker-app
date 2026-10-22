@@ -5,6 +5,7 @@ import { fmtCompact } from "@/lib/utils";
 import type { Category } from "@/lib/data";
 
 const TYPES = ["Fixed Deduction", "Fluid Essential", "Personal", "Investment"] as const;
+const BAR_HEIGHT = 90;
 
 type CatWithSoFar = Category & { soFar: number };
 
@@ -19,8 +20,8 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
 
   return (
     <div className="card">
-      <h3>Expense Breakdown <span className="sub">Spent (blue) vs. remaining budget (gray) vs. over (red)</span></h3>
-      <div className="heat-list">
+      <h3>Expense Breakdown <span className="sub">Blue = spent within plan, red = over, grey = remaining</span></h3>
+      <div>
         {TYPES.map((type) => {
           const typeCats = cats.filter((c) => c.type === type);
           if (typeCats.length === 0) return null;
@@ -28,7 +29,7 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
           const typeSpent = typeCats.reduce((s, c) => s + c.soFar, 0);
           const typePlan = typeCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
           return (
-            <div key={type}>
+            <div key={type} style={{ marginBottom: 10 }}>
               <div
                 onClick={() => toggle(type)}
                 style={{ cursor: "pointer", fontWeight: 700, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 13 }}
@@ -39,29 +40,46 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
                 </span>
                 <span>{fmtCompact(typeSpent, currency)} / {fmtCompact(typePlan, currency)}</span>
               </div>
-              {isOpen && typeCats.map((c) => {
-                const plan = Number(c.ideal_plan_amount);
-                const spentWithinPlan = Math.min(c.soFar, plan);
-                const overAmount = Math.max(0, c.soFar - plan);
-                const remaining = Math.max(0, plan - c.soFar);
-                const spentPct = (spentWithinPlan / heatScaleMax) * 100;
-                const overPct = (overAmount / heatScaleMax) * 100;
-                const remainingPct = (remaining / heatScaleMax) * 100;
-                const over = overAmount > 0;
-                return (
-                  <div className="heat-row" key={c.id} style={{ paddingLeft: 18 }}>
-                    <div className="cat-name" style={{ fontWeight: 500 }}>{c.name}</div>
-                    <div className="bar-track bar-stacked">
-                      <div className="bar-seg" style={{ width: `${spentPct}%`, background: "linear-gradient(90deg,#93c5fd,#3b82f6)" }} />
-                      {over && <div className="bar-seg" style={{ width: `${overPct}%`, background: "linear-gradient(90deg,#f87171,#dc2626)" }} />}
-                      {!over && remaining > 0 && <div className="bar-seg" style={{ width: `${remainingPct}%`, background: "#e5e7eb" }} />}
-                    </div>
-                    <div className="amt" style={{ color: over ? "#dc2626" : undefined }}>
-                      {fmtCompact(c.soFar, currency)} / {fmtCompact(plan, currency)}
-                    </div>
-                  </div>
-                );
-              })}
+              {isOpen && (
+                <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingTop: 6, paddingBottom: 4 }}>
+                  {typeCats.map((c) => {
+                    const plan = Number(c.ideal_plan_amount);
+                    const spentWithinPlan = Math.min(c.soFar, plan);
+                    const overAmount = Math.max(0, c.soFar - plan);
+                    const remaining = Math.max(0, plan - c.soFar);
+                    const over = overAmount > 0;
+                    const blueH = (spentWithinPlan / heatScaleMax) * BAR_HEIGHT;
+                    const redH = (overAmount / heatScaleMax) * BAR_HEIGHT;
+                    const greyH = (remaining / heatScaleMax) * BAR_HEIGHT;
+                    return (
+                      <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 48, flexShrink: 0 }}>
+                        <div
+                          style={{
+                            height: BAR_HEIGHT,
+                            width: 22,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "flex-end",
+                            background: "#f3f4f6",
+                            borderRadius: 5,
+                            overflow: "hidden",
+                          }}
+                        >
+                          {over && <div style={{ height: redH, width: "100%", background: "linear-gradient(180deg,#dc2626,#f87171)" }} />}
+                          {!over && greyH > 0 && <div style={{ height: greyH, width: "100%", background: "#e5e7eb" }} />}
+                          <div style={{ height: blueH, width: "100%", background: "linear-gradient(180deg,#3b82f6,#93c5fd)" }} />
+                        </div>
+                        <div style={{ fontSize: 10, marginTop: 6, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 48 }}>
+                          {c.name}
+                        </div>
+                        <div style={{ fontSize: 9, color: over ? "#dc2626" : "#6b7280", marginTop: 2 }}>
+                          {fmtCompact(c.soFar, currency)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}

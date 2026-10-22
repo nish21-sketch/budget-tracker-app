@@ -56,7 +56,12 @@ export default async function DashboardPage() {
 
         <div className="card kpi-card">
           <div className="label">Budget vs Spend</div>
-          <div className="value">{fmt(totalExpense, currency)} / {fmt(spendBudget, currency)}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginTop: 2 }}>
+            Budget: {fmt(spendBudget, currency)}
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: isOverBudget ? "#dc2626" : "#16a34a" }}>
+            Spend: {fmt(totalExpense, currency)}
+          </div>
           <div className="bar-track bar-stacked" style={{ height: 8, marginTop: 8 }}>
             <div className="bar-seg" style={{ width: `${budgetBluePct}%`, background: "#3b82f6" }} />
             {isOverBudget && <div className="bar-seg" style={{ width: `${budgetRedPct}%`, background: "#dc2626" }} />}
