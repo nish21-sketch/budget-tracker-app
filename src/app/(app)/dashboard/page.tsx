@@ -21,6 +21,7 @@ export default async function DashboardPage() {
   const cashInHand = income - totalExpense - totalInvestment;
   const spendBudget = cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
   const overBudget = spendBudget > 0 && totalExpense > spendBudget;
+  const budgetPct = spendBudget > 0 ? Math.min(100, (totalExpense / spendBudget) * 100) : 0;
 
   const emiCats = cats.filter((c) => c.end_date);
 
@@ -45,13 +46,26 @@ export default async function DashboardPage() {
     <div>
       <div className="kpi-row">
         <div className="card kpi-card"><div className="label">Monthly Income</div><div className="value">{fmt(income, currency)}</div></div>
+
         <div className="card kpi-card">
-          <div className="label">Spend Budget</div>
-          <div className="value">{fmt(spendBudget, currency)}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2, color: overBudget ? "#dc2626" : "#16a34a" }}>
-            Spent: {fmt(totalExpense, currency)}
+          <div className="label">Budget vs Spend</div>
+          <div className="value" style={{ color: overBudget ? "#dc2626" : "#16a34a" }}>
+            {fmt(totalExpense, currency)} / {fmt(spendBudget, currency)}
+          </div>
+          <div className="progress-track" style={{ marginTop: 8, height: 6 }}>
+            <div className="progress-fill" style={{ width: "100%", background: "#3b82f6" }} />
+          </div>
+          <div className="progress-track" style={{ marginTop: 4, height: 6 }}>
+            <div
+              className="progress-fill"
+              style={{
+                width: `${budgetPct}%`,
+                background: overBudget ? "linear-gradient(90deg,#f87171,#dc2626)" : "linear-gradient(90deg,#6ee7b7,#16a34a)",
+              }}
+            />
           </div>
         </div>
+
         <div className="card kpi-card"><div className="label">Investment (so far)</div><div className="value">{fmt(totalInvestment, currency)}</div></div>
         <div className="card kpi-card"><div className="label">Cash in Hand</div><div className="value" style={{ color: cashInHand < 0 ? "#dc2626" : "#16a34a" }}>{fmt(cashInHand, currency)}</div></div>
       </div>

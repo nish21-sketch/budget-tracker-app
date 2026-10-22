@@ -82,7 +82,7 @@ export default function LogForm({
     <div className="log-wrap">
       <div className="log-header">
         <h1>Log an expense</h1>
-        <p>Type an amount, press Enter — it saves instantly and the box clears itself.</p>
+        <p>Type an amount and an optional note, then tap Add.</p>
       </div>
 
       <div className="log-list">
@@ -92,43 +92,65 @@ export default function LogForm({
         {cats.map((c) => {
           const over = c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0;
           return (
-            <div className={`log-row ${over ? "over" : ""}`} key={c.id} style={{ display: "block", padding: "10px 0" }}>
-              <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                <div className="cat" style={{ flex: "1 1 auto", minWidth: 0 }}>
-                  {c.name}
-                  <span className="so-far">So far: {fmt(c.soFar, currency)}{over ? " — over plan" : ""}</span>
-                </div>
-                <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
-                  <span className="currency">{currency}</span>
-                  <input
-                    className="log-input"
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={inputs[c.id] ?? ""}
-                    onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                    onKeyDown={(e) => handleKeyDown(e, c)}
-                    disabled={isPending}
-                    style={{ boxSizing: "border-box" }}
-                  />
-                </div>
+            <div
+              className={`log-row ${over ? "over" : ""}`}
+              key={c.id}
+              style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6, overflowX: "auto", padding: "8px 0" }}
+            >
+              <div className="cat" style={{ flex: "1 1 70px", minWidth: 60, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {c.name}
+                <span className="so-far" style={{ display: "block", fontSize: 11 }}>
+                  So far: {fmt(c.soFar, currency)}{over ? " — over" : ""}
+                </span>
               </div>
               <input
                 type="text"
-                placeholder="Note (optional)"
+                placeholder="Note"
                 value={notes[c.id] ?? ""}
                 onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
                 disabled={isPending}
                 style={{
-                  width: "100%",
+                  flex: "0 0 70px",
+                  width: 70,
                   boxSizing: "border-box",
                   border: "1px solid #e5e7eb",
                   borderRadius: 8,
-                  padding: "6px 8px",
-                  fontSize: 12,
-                  marginTop: 6,
+                  padding: "6px 6px",
+                  fontSize: 11,
                 }}
               />
+              <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
+                <span className="currency">{currency}</span>
+                <input
+                  className="log-input"
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={inputs[c.id] ?? ""}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                  onKeyDown={(e) => handleKeyDown(e, c)}
+                  disabled={isPending}
+                  style={{ boxSizing: "border-box", width: 60 }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => submitFor(c)}
+                disabled={isPending}
+                style={{
+                  flex: "0 0 auto",
+                  background: "var(--accent, #6366f1)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "7px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Add
+              </button>
             </div>
           );
         })}

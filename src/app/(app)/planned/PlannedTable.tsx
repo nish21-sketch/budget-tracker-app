@@ -40,6 +40,10 @@ export default function PlannedTable({
     return list.reduce((s, c) => s + planForMonth(c, m), 0);
   }
 
+  function plannedBudget(m: Date) {
+    return cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + planForMonth(c, m), 0);
+  }
+
   function totalExpense(m: Date, i: number) {
     return i === 0
       ? cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0)
@@ -112,6 +116,12 @@ export default function PlannedTable({
             <td>Income</td>
             {months.map((m, i) => (
               <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(income, currency)}</td>
+            ))}
+          </tr>
+          <tr className="total-row">
+            <td>Planned Budget</td>
+            {months.map((m, i) => (
+              <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(plannedBudget(m), currency)}</td>
             ))}
           </tr>
           <tr className="total-row">
