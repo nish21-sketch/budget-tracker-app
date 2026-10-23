@@ -62,6 +62,8 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
   }
 
   const activeCats = cats.filter((c) => c.soFar > 0);
+  const grandSpent = activeCats.reduce((s, c) => s + c.soFar, 0);
+  const grandPlan = activeCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
 
   return (
     <div className="card">
@@ -107,6 +109,21 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
           </div>
         );
       })}
+
+      {activeCats.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: 10,
+            borderTop: "2px solid #e5e7eb",
+          }}
+        >
+          <span style={{ fontWeight: 800, fontSize: 14 }}>Total</span>
+          <Amount plan={grandPlan} spent={grandSpent} currency={currency} />
+        </div>
+      )}
     </div>
   );
 }

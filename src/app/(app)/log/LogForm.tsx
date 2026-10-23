@@ -23,6 +23,17 @@ function catNameFromRow(row: RecentRow): string {
 
 const PAGE_SIZE = 10;
 
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid #d1d5db",
+  borderRadius: 8,
+  padding: "8px 6px",
+  fontSize: 16,
+  background: "white",
+  minWidth: 0,
+};
+
 export default function LogForm({
   categories,
   currency,
@@ -85,66 +96,68 @@ export default function LogForm({
         <p>Type an amount and an optional note, then tap Add.</p>
       </div>
 
-      <div className="log-list">
+      <div>
         {cats.length === 0 && (
-          <div className="log-row"><span style={{ color: "var(--muted)" }}>No categories yet — add some in Settings.</span></div>
+          <div style={{ color: "var(--muted)", fontSize: 13 }}>No categories yet — add some in Settings.</div>
         )}
         {cats.map((c) => {
           const over = c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0;
           return (
             <div
-              className={`log-row ${over ? "over" : ""}`}
               key={c.id}
-              style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 6, overflowX: "auto", padding: "8px 0" }}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) 72px 84px 46px",
+                columnGap: 6,
+                alignItems: "center",
+                padding: "8px 6px",
+                borderBottom: "1px solid #f1f2f6",
+                borderRadius: 8,
+                background: over ? "#fef2f2" : "transparent",
+                textAlign: "left",
+              }}
             >
-              <div className="cat" style={{ flex: "1 1 60px", minWidth: 50, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {c.name}
-                <span className="so-far" style={{ display: "block", fontSize: 11 }}>
-                  So far: {fmt(c.soFar, currency)}{over ? " — over" : ""}
-                </span>
+              <div style={{ minWidth: 0, textAlign: "left" }}>
+                <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {c.name}
+                </div>
+                <div style={{ fontSize: 11, color: over ? "#dc2626" : "#6b7280" }}>
+                  So far: {fmt(c.soFar, currency)}{over ? " · over" : ""}
+                </div>
               </div>
-              <div className="log-input-wrap" style={{ flex: "0 0 auto" }}>
-                <span className="currency">{currency}</span>
-                <input
-                  className="log-input"
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={inputs[c.id] ?? ""}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                  onKeyDown={(e) => handleKeyDown(e, c)}
-                  disabled={isPending}
-                  style={{ boxSizing: "border-box", width: 60 }}
-                />
-              </div>
+
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder={currency}
+                value={inputs[c.id] ?? ""}
+                onChange={(e) => setInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                onKeyDown={(e) => handleKeyDown(e, c)}
+                disabled={isPending}
+                style={inputStyle}
+              />
+
               <input
                 type="text"
                 placeholder="Note"
                 value={notes[c.id] ?? ""}
                 onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
                 disabled={isPending}
-                style={{
-                  flex: "0 0 70px",
-                  width: 70,
-                  boxSizing: "border-box",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "6px 6px",
-                  fontSize: 11,
-                }}
+                style={inputStyle}
               />
+
               <button
                 type="button"
                 onClick={() => submitFor(c)}
                 disabled={isPending}
                 style={{
-                  flex: "0 0 auto",
+                  width: "100%",
                   background: "var(--accent, #6366f1)",
                   color: "white",
                   border: "none",
                   borderRadius: 8,
-                  padding: "7px 10px",
-                  fontSize: 12,
+                  padding: "10px 0",
+                  fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
