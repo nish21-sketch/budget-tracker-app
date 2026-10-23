@@ -39,7 +39,6 @@ export default async function DashboardPage() {
   const spendPct = totalPlanAll > 0 ? Math.round((totalSpentAll / totalPlanAll) * 100) : 0;
   const paceDelta = spendPct - timePct;
 
-  const topCat = [...cats].sort((a, b) => b.soFar - a.soFar)[0];
   const overspendCat = cats.find((c) => c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0);
 
   const prevTotalSpent = cats.reduce((s, c) => s + (prevSoFarMap[c.id] ?? 0), 0);
@@ -124,7 +123,6 @@ export default async function DashboardPage() {
         <div className="card">
           <h3>Smart Insights</h3>
           <div className="insights">
-            {topCat && <div className="insight-line">💡 Top expense category this month: <b>{topCat.name} ({fmt(topCat.soFar, currency)})</b></div>}
             {overspendCat && (
               <div className="insight-line warn">⚠️ You&apos;ve gone over plan on <b>{overspendCat.name}</b> — {fmt(overspendCat.soFar, currency)} logged vs {fmt(Number(overspendCat.ideal_plan_amount), currency)} planned.</div>
             )}

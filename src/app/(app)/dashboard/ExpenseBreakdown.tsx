@@ -32,7 +32,6 @@ function Bars({ plan, spent }: { plan: number; spent: number }) {
   return (
     <>
       <div className="goal-block">
-        <div className="goal-label">Budget</div>
         <div className="progress-track">
           <div
             className="progress-fill"
@@ -41,7 +40,6 @@ function Bars({ plan, spent }: { plan: number; spent: number }) {
         </div>
       </div>
       <div className="goal-block">
-        <div className="goal-label">Spent</div>
         <div className="progress-track">
           <div
             className="progress-fill"
