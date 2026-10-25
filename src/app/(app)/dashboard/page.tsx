@@ -1,15 +1,30 @@
-import { getCategories, getIncome, getSoFarByCategory, getProfile } from "@/lib/data";
-import { fmt, firstOfMonth, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
+import Link from "next/link";
+import { getCategories, getIncome, getSoFarByCategory, getProfile, getActiveCycle } from "@/lib/data";
+import { fmt, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
 import ExpenseBreakdown from "./ExpenseBreakdown";
 
-export default async function DashboardPage() {
-  const now = firstOfMonth();
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cycle?: string }>;
+}) {
+  const sp = await searchParams;
+  const active = await getActiveCycle();
+
+  let viewing = active;
+  if (typeof sp.cycle === "string" && /^\d{4}-\d{2}-01$/.test(sp.cycle)) {
+    const [vy, vm] = sp.cycle.split("-").map(Number);
+    const candidate = new Date(vy, vm - 1, 1);
+    if (candidate < active) viewing = candidate;
+  }
+  const isPast = viewing < active;
+  const now = viewing;
   const prevMonth = addMonths(now, -1);
 
   const [categories, income, soFarMap, profile, prevSoFarMap] = await Promise.all([
     getCategories(),
     getIncome(),
-    getSoFarByCategory(),
+    getSoFarByCategory(now),
     getProfile(),
     getSoFarByCategory(prevMonth),
   ]);
@@ -33,7 +48,11 @@ export default async function DashboardPage() {
   const emiCats = cats.filter((c) => c.end_date);
 
   const today = new Date();
-  const timePct = Math.round((today.getDate() / daysInMonth(now)) * 100);
+  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dim = daysInMonth(now);
+  const elapsed = Math.min(dim, Math.max(0, Math.floor((todayMid.getTime() - now.getTime()) / 86400000) + 1));
+  const timePct = Math.round((elapsed / dim) * 100);
+
   const totalPlanAll = cats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
   const totalSpentAll = cats.reduce((s, c) => s + c.soFar, 0);
   const spendPct = totalPlanAll > 0 ? Math.round((totalSpentAll / totalPlanAll) * 100) : 0;
@@ -44,14 +63,37 @@ export default async function DashboardPage() {
   const prevTotalSpent = cats.reduce((s, c) => s + (prevSoFarMap[c.id] ?? 0), 0);
   const trendPct = prevTotalSpent > 0 ? Math.round(((totalSpentAll - prevTotalSpent) / prevTotalSpent) * 100) : null;
 
-  const dailyRate = today.getDate() > 0 ? totalSpentAll / today.getDate() : 0;
-  const projectedTotal = Math.round(dailyRate * daysInMonth(now));
-  const projDeltaPct = totalPlanAll > 0 ? Math.round(((projectedTotal - totalPlanAll) / totalPlanAll) * 100) : null;
+  const showProjection = !isPast && elapsed > 0 && totalPlanAll > 0;
+  const projectedTotal = elapsed > 0 ? Math.round((totalSpentAll / elapsed) * dim) : 0;
+  const projDeltaPct = totalPlanAll > 0 ? Math.round(((projectedTotal - totalPlanAll) / totalPlanAll) * 100) : 0;
 
   return (
     <div>
+      {isPast && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Viewing past cycle: {monthLabel(viewing)}</span>
+          <Link href="/dashboard" style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>
+            Back to current →
+          </Link>
+        </div>
+      )}
+
       <div className="kpi-row">
-        <div className="card kpi-card"><div className="label">Monthly Income</div><div className="value">{fmt(income, currency)}</div></div>
+        <div className="card kpi-card">
+          <div className="label">Monthly Income</div>
+          <div className="value">{fmt(income, currency)}</div>
+        </div>
 
         <div className="card kpi-card">
           <div className="label">Budget vs Spend</div>
@@ -94,19 +136,20 @@ export default async function DashboardPage() {
               </div>
             );
           })}
-          {emiCats.filter((c) => new Date(c.end_date!) <= now).map((c) => (
-            <div className="emi-ended-note" key={c.id + "-note"}>
-              💡 {c.name} ended — {fmt(Number(c.ideal_plan_amount), currency)}/month is now free. Consider redirecting it to your Emergency Fund or SIP.
-            </div>
-          ))}
+          {!isPast &&
+            emiCats.filter((c) => new Date(c.end_date!) <= now).map((c) => (
+              <div className="emi-ended-note" key={c.id + "-note"}>
+                {`💡 ${c.name} ended — ${fmt(Number(c.ideal_plan_amount), currency)}/month is now free. Consider redirecting it to your Emergency Fund or SIP.`}
+              </div>
+            ))}
         </div>
       )}
 
       <div className="grid-2">
         <div className="card">
-          <h3>Budget Pace <span className="sub">Are you spending faster than the month is passing?</span></h3>
+          <h3>Budget Pace <span className="sub">Are you spending faster than the cycle is passing?</span></h3>
           <div className="goal-block">
-            <div className="goal-label">Month elapsed</div>
+            <div className="goal-label">Cycle elapsed</div>
             <div className="progress-track"><div className="progress-fill" style={{ width: `${timePct}%`, background: "linear-gradient(90deg,#a5b4fc,#6366f1)" }} /></div>
           </div>
           <div className="goal-block">
@@ -115,8 +158,8 @@ export default async function DashboardPage() {
           </div>
           <div className={`insight-line ${paceDelta > 15 ? "warn" : ""}`} style={{ marginTop: 4 }}>
             {paceDelta > 15
-              ? `⚠️ You've used ${spendPct}% of your budget but only ${timePct}% of the month has passed — spending is outpacing time.`
-              : `✅ Spending (${spendPct}%) is tracking with how much of the month has passed (${timePct}%).`}
+              ? `⚠️ You've used ${spendPct}% of your budget but only ${timePct}% of the cycle has passed — spending is outpacing time.`
+              : `✅ Spending (${spendPct}%) is tracking with how much of the cycle has passed (${timePct}%).`}
           </div>
         </div>
 
@@ -124,16 +167,18 @@ export default async function DashboardPage() {
           <h3>Smart Insights</h3>
           <div className="insights">
             {overspendCat && (
-              <div className="insight-line warn">⚠️ You&apos;ve gone over plan on <b>{overspendCat.name}</b> — {fmt(overspendCat.soFar, currency)} logged vs {fmt(Number(overspendCat.ideal_plan_amount), currency)} planned.</div>
+              <div className="insight-line warn">
+                {`⚠️ You've gone over plan on ${overspendCat.name} — ${fmt(overspendCat.soFar, currency)} logged vs ${fmt(Number(overspendCat.ideal_plan_amount), currency)} planned.`}
+              </div>
             )}
             {trendPct !== null && (
               <div className={`insight-line ${trendPct > 15 ? "warn" : ""}`}>
-                {trendPct >= 0 ? "📈" : "📉"} You&apos;ve spent {fmt(totalSpentAll, currency)} so far this month — {Math.abs(trendPct)}% {trendPct >= 0 ? "more" : "less"} than you spent all of last month ({fmt(prevTotalSpent, currency)}).
+                {`${trendPct >= 0 ? "📈" : "📉"} ${isPast ? `You spent ${fmt(totalSpentAll, currency)} in ${monthLabel(viewing)}` : `You've spent ${fmt(totalSpentAll, currency)} so far this cycle`} — ${Math.abs(trendPct)}% ${trendPct >= 0 ? "more" : "less"} than you spent in ${monthLabel(prevMonth)} (${fmt(prevTotalSpent, currency)}).`}
               </div>
             )}
-            {totalPlanAll > 0 && projDeltaPct !== null && (
+            {showProjection && (
               <div className={`insight-line ${projDeltaPct > 0 ? "warn" : ""}`}>
-                🔮 At this pace, you&apos;re projected to spend {fmt(projectedTotal, currency)} by month-end — {projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your {fmt(totalPlanAll, currency)} plan.
+                {`🔮 At this pace, you're projected to spend ${fmt(projectedTotal, currency)} by the end of the cycle — ${projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your ${fmt(totalPlanAll, currency)} plan.`}
               </div>
             )}
           </div>

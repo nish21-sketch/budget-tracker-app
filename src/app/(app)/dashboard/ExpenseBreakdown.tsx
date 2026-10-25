@@ -17,40 +17,39 @@ function Amount({ plan, spent, currency }: { plan: number; spent: number; curren
   const over = spent > plan;
   const pct = overPct(plan, spent);
   return (
-    <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+    <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>
       <span style={{ color: over ? "#dc2626" : undefined }}>{fmtCompact(spent, currency)}</span>
       {" / "}
       {fmtCompact(plan, currency)}
-      {pct !== null && <span style={{ color: "#dc2626", marginLeft: 6 }}>▲ {pct}%</span>}
+      {pct !== null && <span style={{ color: "#dc2626", marginLeft: 4 }}>▲{pct}%</span>}
     </span>
   );
 }
 
-function Bars({ plan, spent }: { plan: number; spent: number }) {
+function StackedBars({ plan, spent }: { plan: number; spent: number }) {
   const over = spent > plan;
   const scale = Math.max(plan, spent, 1);
   return (
-    <>
-      <div className="goal-block">
-        <div className="progress-track">
-          <div
-            className="progress-fill"
-            style={{ width: `${(plan / scale) * 100}%`, background: "linear-gradient(90deg,#93c5fd,#3b82f6)" }}
-          />
-        </div>
+    <div style={{ minWidth: 0 }}>
+      <div style={{ height: 8, background: "#eef0f5", borderRadius: "4px 4px 0 0", overflow: "hidden" }}>
+        <div
+          style={{
+            height: "100%",
+            width: `${(plan / scale) * 100}%`,
+            background: "linear-gradient(90deg,#93c5fd,#3b82f6)",
+          }}
+        />
       </div>
-      <div className="goal-block">
-        <div className="progress-track">
-          <div
-            className="progress-fill"
-            style={{
-              width: `${(spent / scale) * 100}%`,
-              background: over ? "linear-gradient(90deg,#fca5a5,#dc2626)" : "linear-gradient(90deg,#6ee7b7,#16a34a)",
-            }}
-          />
-        </div>
+      <div style={{ height: 8, background: "#eef0f5", borderRadius: "0 0 4px 4px", overflow: "hidden", borderTop: "1px solid #fff" }}>
+        <div
+          style={{
+            height: "100%",
+            width: `${(spent / scale) * 100}%`,
+            background: over ? "linear-gradient(90deg,#fca5a5,#dc2626)" : "linear-gradient(90deg,#6ee7b7,#16a34a)",
+          }}
+        />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -67,10 +66,10 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
 
   return (
     <div className="card">
-      <h3>Expense Breakdown <span className="sub">Tap a group to see its categories</span></h3>
+      <h3>Expense Breakdown <span className="sub">Tap a group to open it</span></h3>
 
       {activeCats.length === 0 && (
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>Nothing spent yet this month — log an expense to see it here.</div>
+        <div style={{ color: "var(--muted)", fontSize: 13 }}>Nothing spent in this cycle yet.</div>
       )}
 
       {TYPES.map((type) => {
@@ -94,18 +93,25 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
             </div>
 
             {isOpen &&
-              typeCats.map((c) => {
-                const plan = Number(c.ideal_plan_amount);
-                return (
-                  <div key={c.id} style={{ marginTop: 12, paddingLeft: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span>
-                      <Amount plan={plan} spent={c.soFar} currency={currency} />
-                    </div>
-                    <Bars plan={plan} spent={c.soFar} />
-                  </div>
-                );
-              })}
+              typeCats.map((c) => (
+                <div
+                  key={c.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "80px minmax(40px, 1fr) auto",
+                    columnGap: 8,
+                    alignItems: "center",
+                    marginTop: 10,
+                    paddingLeft: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {c.name}
+                  </span>
+                  <StackedBars plan={Number(c.ideal_plan_amount)} spent={c.soFar} />
+                  <Amount plan={Number(c.ideal_plan_amount)} spent={c.soFar} currency={currency} />
+                </div>
+              ))}
           </div>
         );
       })}

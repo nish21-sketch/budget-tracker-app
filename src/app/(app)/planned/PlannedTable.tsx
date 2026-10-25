@@ -58,7 +58,7 @@ export default function PlannedTable({
 
   return (
     <div className="budget-scroll">
-      <table className="budget-table">
+      <table className="budget-table compact">
         <thead>
           <tr>
             <th>Category</th>
@@ -80,8 +80,8 @@ export default function PlannedTable({
                   style={{ cursor: "pointer" }}
                 >
                   <td>
-                    <span style={{ display: "inline-block", width: 14, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
-                    {" "}{type} <span style={{ fontWeight: 600, textTransform: "none", letterSpacing: 0 }}>({type === "Investment" ? "Save" : "Spend"})</span>
+                    <span style={{ display: "inline-block", width: 12, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
+                    {type}
                   </td>
                   {months.map((m, i) => (
                     <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(subtotal(type, m, i), currency)}</td>
@@ -90,7 +90,7 @@ export default function PlannedTable({
                 {isOpen && typeCats.map((cat) => (
                   <tr key={cat.id}>
                     <td>
-                      <div className="cat-cell" style={{ paddingLeft: 20 }}>
+                      <div className="cat-cell" style={{ paddingLeft: 12 }}>
                         {cat.name}
                         <span className="cat-meta">
                           Plan: {fmt(Number(cat.ideal_plan_amount), currency)}

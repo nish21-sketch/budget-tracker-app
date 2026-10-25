@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/actions";
+import CycleSwitcher from "./CycleSwitcher";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
@@ -25,7 +26,7 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
             </Link>
           ))}
         </div>
-        <div className="month-pill">📅 {monthLabel}</div>
+        <CycleSwitcher fallbackLabel={monthLabel} />
         <form action={signOut}>
           <button className="avatar" title="Sign out" type="submit" style={{ border: "none", cursor: "pointer" }}>
             {initial}

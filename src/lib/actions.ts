@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/data";
-import { firstOfMonth, toDateInputValue } from "@/lib/utils";
+import { getCurrentUser, getActiveCycle } from "@/lib/data";
+import { firstOfMonth, addMonths, monthLabel, toDateInputValue } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -37,10 +37,61 @@ export async function completeOnboarding(
   redirect("/dashboard");
 }
 
+export async function getCycleInfo() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const calendar = firstOfMonth();
+  const active = await getActiveCycle();
+  const next = addMonths(active, 1);
+  const { data } = await supabase
+    .from("transactions")
+    .select("month")
+    .eq("user_id", user.id)
+    .lt("month", toDateInputValue(active));
+  const keys = Array.from(new Set((data ?? []).map((r) => String(r.month))))
+    .sort()
+    .reverse()
+    .slice(0, 12);
+  return {
+    activeLabel: monthLabel(active),
+    nextLabel: monthLabel(next),
+    backLabel: monthLabel(addMonths(active, -1)),
+    canStartNext: next <= addMonths(calendar, 1),
+    startedEarly: active > calendar,
+    past: keys.map((k) => {
+      const [y, m] = k.split("-").map(Number);
+      return { key: k, label: monthLabel(new Date(y, m - 1, 1)) };
+    }),
+  };
+}
+
+export async function startNextCycle() {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const active = await getActiveCycle();
+  const next = addMonths(active, 1);
+  if (next > addMonths(firstOfMonth(), 1)) return;
+  await supabase.from("profiles").update({ current_cycle: toDateInputValue(next) }).eq("id", user!.id);
+  revalidatePath("/", "layout");
+}
+
+export async function undoEarlyCycle() {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const active = await getActiveCycle();
+  if (active <= firstOfMonth()) return;
+  await supabase.from("profiles").update({ current_cycle: null }).eq("id", user!.id);
+  revalidatePath("/", "layout");
+}
+
 export async function logTransaction(categoryId: string, amount: number, note?: string, month?: Date) {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const cycle = month ?? (await getActiveCycle());
   const { data } = await supabase
     .from("transactions")
     .insert({
@@ -48,7 +99,7 @@ export async function logTransaction(categoryId: string, amount: number, note?: 
       category_id: categoryId,
       amount,
       note: note || null,
-      month: toDateInputValue(month ?? firstOfMonth()),
+      month: toDateInputValue(cycle),
     })
     .select("id, amount, note, logged_at, category_id")
     .single();

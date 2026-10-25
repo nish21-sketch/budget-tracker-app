@@ -24,6 +24,18 @@ export async function getProfile() {
   return data;
 }
 
+// The cycle the user is currently in: the calendar month, unless they started the next one early.
+export async function getActiveCycle(): Promise<Date> {
+  const calendar = firstOfMonth();
+  const profile = await getProfile();
+  const raw = (profile as { current_cycle?: string | null } | null)?.current_cycle;
+  if (!raw) return calendar;
+  const [y, m] = raw.split("-").map(Number);
+  if (!y || !m) return calendar;
+  const stored = new Date(y, m - 1, 1);
+  return stored > calendar ? stored : calendar;
+}
+
 export async function getIncome() {
   const supabase = await createClient();
   const user = await getCurrentUser();
@@ -48,21 +60,41 @@ export async function getCategories(): Promise<Category[]> {
   return data ?? [];
 }
 
-// Sum of transactions per category for a given first-of-month date
-export async function getSoFarByCategory(month: Date = firstOfMonth()): Promise<Record<string, number>> {
+// Sum of transactions per category for a cycle (defaults to the active cycle)
+export async function getSoFarByCategory(month?: Date): Promise<Record<string, number>> {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return {};
+  const target = month ?? (await getActiveCycle());
   const { data } = await supabase
     .from("transactions")
     .select("category_id, amount")
     .eq("user_id", user.id)
-    .eq("month", toDateInputValue(month));
+    .eq("month", toDateInputValue(target));
   const map: Record<string, number> = {};
   (data ?? []).forEach((row) => {
     map[row.category_id] = (map[row.category_id] ?? 0) + Number(row.amount);
   });
   return map;
+}
+
+// Total non-Investment spend per cycle, keyed by first-of-month date (YYYY-MM-DD)
+export async function getMonthlySpendTotals(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return {};
+  const { data } = await supabase
+    .from("transactions")
+    .select("amount, month, categories(type)")
+    .eq("user_id", user.id);
+  const totals: Record<string, number> = {};
+  (data ?? []).forEach((row) => {
+    const raw = row.categories as unknown as { type: string } | { type: string }[] | null;
+    const cat = Array.isArray(raw) ? raw[0] : raw;
+    if (!cat || cat.type === "Investment") return;
+    totals[row.month] = (totals[row.month] ?? 0) + Number(row.amount);
+  });
+  return totals;
 }
 
 export async function getAllTransactions() {
