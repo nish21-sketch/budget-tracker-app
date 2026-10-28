@@ -55,7 +55,7 @@ export default async function PlannedPage() {
       <div className="legend-row">
         <span><span className="legend-dot" style={{ background: "var(--accent-soft)", border: "1px solid var(--accent)" }} /> Current cycle (actual so far)</span>
         <span><span className="legend-dot" style={{ background: "var(--red-soft)", border: "1px solid var(--red)" }} /> Over plan</span>
-        <span><span className="legend-dot" style={{ background: "#f1f2f6" }} /> {currency}0 — EMI/loan ended</span>
+        <span><span className="legend-dot" style={{ background: "#f1f2f6" }} /> {currency}0 — not due this month / ended</span>
       </div>
 
       <PlannedTable cats={cats} monthsIso={monthsIso} income={income} currency={currency} />

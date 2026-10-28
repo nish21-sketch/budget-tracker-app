@@ -8,6 +8,8 @@ export type Category = {
   ideal_plan_amount: number;
   end_date: string | null;
   sort_order: number;
+  frequency?: "monthly" | "quarterly" | "half_yearly" | "yearly";
+  due_month?: string | null;
 };
 
 export async function getCurrentUser() {

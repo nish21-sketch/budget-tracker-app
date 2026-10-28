@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCategories, getIncome, getSoFarByCategory, getProfile, getActiveCycle } from "@/lib/data";
 import { fmt, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
+import { isDueInMonth } from "@/lib/frequency";
 import ExpenseBreakdown from "./ExpenseBreakdown";
 
 export default async function DashboardPage({
@@ -29,7 +30,11 @@ export default async function DashboardPage({
     getSoFarByCategory(prevMonth),
   ]);
   const currency = profile?.currency ?? "₹";
-  const cats = categories.map((c) => ({ ...c, soFar: soFarMap[c.id] ?? 0 }));
+  const cats = categories.map((c) => ({
+    ...c,
+    ideal_plan_amount: isDueInMonth(c.frequency, c.due_month, now) ? Number(c.ideal_plan_amount) : 0,
+    soFar: soFarMap[c.id] ?? 0,
+  }));
 
   const totalExpense = cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0);
   const totalInvestment = cats.filter((c) => c.type === "Investment").reduce((s, c) => s + c.soFar, 0);

@@ -11,7 +11,15 @@ export type OnboardingCategory = {
   type: "Fixed Deduction" | "Fluid Essential" | "Personal" | "Investment";
   idealPlanAmount: number;
   endDate: string | null;
+  frequency?: string;
+  dueMonth?: string | null;
 };
+
+const FREQUENCIES = ["monthly", "quarterly", "half_yearly", "yearly"];
+
+function cleanFrequency(f?: string | null): string {
+  return f && FREQUENCIES.includes(f) ? f : "monthly";
+}
 
 export async function completeOnboarding(
   currency: string,
@@ -23,14 +31,19 @@ export async function completeOnboarding(
   if (!user) redirect("/login");
   await supabase.from("profiles").update({ currency, onboarding_complete: true }).eq("id", user!.id);
   await supabase.from("income").update({ monthly_amount: monthlyIncome }).eq("user_id", user!.id);
-  const rows = categories.map((c, i) => ({
-    user_id: user!.id,
-    name: c.name,
-    type: c.type,
-    ideal_plan_amount: c.idealPlanAmount,
-    end_date: c.endDate || null,
-    sort_order: i,
-  }));
+  const rows = categories.map((c, i) => {
+    const freq = cleanFrequency(c.frequency);
+    return {
+      user_id: user!.id,
+      name: c.name,
+      type: c.type,
+      ideal_plan_amount: c.idealPlanAmount,
+      end_date: c.endDate || null,
+      frequency: freq,
+      due_month: freq === "monthly" ? null : c.dueMonth || null,
+      sort_order: i,
+    };
+  });
   if (rows.length > 0) {
     await supabase.from("categories").insert(rows);
   }
@@ -133,11 +146,20 @@ export async function updateIncome(amount: number) {
 
 export async function upsertCategory(
   id: string | null,
-  fields: { name: string; type: string; idealPlanAmount: number; endDate: string | null }
+  fields: {
+    name: string;
+    type: string;
+    idealPlanAmount: number;
+    endDate: string | null;
+    frequency?: string;
+    dueMonth?: string | null;
+  }
 ) {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const freq = cleanFrequency(fields.frequency);
+  const dueMonth = freq === "monthly" ? null : fields.dueMonth || null;
   if (id) {
     await supabase
       .from("categories")
@@ -146,6 +168,8 @@ export async function upsertCategory(
         type: fields.type,
         ideal_plan_amount: fields.idealPlanAmount,
         end_date: fields.endDate || null,
+        frequency: freq,
+        due_month: dueMonth,
       })
       .eq("id", id)
       .eq("user_id", user!.id);
@@ -156,6 +180,8 @@ export async function upsertCategory(
       type: fields.type,
       ideal_plan_amount: fields.idealPlanAmount,
       end_date: fields.endDate || null,
+      frequency: freq,
+      due_month: dueMonth,
       sort_order: 999,
     });
   }

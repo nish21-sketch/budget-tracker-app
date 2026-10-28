@@ -5,6 +5,15 @@ import { updateIncome, upsertCategory, deleteCategory, moveCategory } from "@/li
 import { CATEGORY_TYPES, CategoryType } from "@/lib/categories";
 import { fmt } from "@/lib/utils";
 import type { Category } from "@/lib/data";
+import { FREQUENCY_OPTIONS, Frequency, dueMonthOptions, defaultDueMonth, frequencyTag } from "@/lib/frequency";
+
+const smallLabel: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  fontSize: 11,
+  color: "var(--muted)",
+};
 
 export default function SettingsForm({
   categories,
@@ -18,7 +27,15 @@ export default function SettingsForm({
   const [incomeVal, setIncomeVal] = useState(income);
   const [cats, setCats] = useState(categories);
   const [isPending, startTransition] = useTransition();
-  const [newCat, setNewCat] = useState({ name: "", type: "Personal" as CategoryType, idealPlanAmount: 0, hasEndDate: false, endDate: "" });
+  const [newCat, setNewCat] = useState({
+    name: "",
+    type: "Personal" as CategoryType,
+    idealPlanAmount: 0,
+    hasEndDate: false,
+    endDate: "",
+    frequency: "monthly" as Frequency,
+    dueMonth: "",
+  });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
@@ -29,12 +46,15 @@ export default function SettingsForm({
   }
 
   function saveCategory(c: Category) {
+    const freq = c.frequency ?? "monthly";
     startTransition(async () => {
       await upsertCategory(c.id, {
         name: c.name,
         type: c.type,
         idealPlanAmount: Number(c.ideal_plan_amount),
         endDate: c.end_date,
+        frequency: freq,
+        dueMonth: freq === "monthly" ? null : c.due_month ?? defaultDueMonth(),
       });
     });
   }
@@ -54,10 +74,30 @@ export default function SettingsForm({
         type: newCat.type,
         idealPlanAmount: newCat.idealPlanAmount,
         endDate: newCat.hasEndDate ? newCat.endDate || null : null,
+        frequency: newCat.frequency,
+        dueMonth: newCat.frequency === "monthly" ? null : newCat.dueMonth || defaultDueMonth(),
       });
-      setNewCat({ name: "", type: "Personal", idealPlanAmount: 0, hasEndDate: false, endDate: "" });
+      setNewCat({
+        name: "",
+        type: "Personal",
+        idealPlanAmount: 0,
+        hasEndDate: false,
+        endDate: "",
+        frequency: "monthly",
+        dueMonth: "",
+      });
       setShowAdd(false);
     });
+  }
+
+  function changeFrequency(i: number, f: Frequency) {
+    setCats((prev) =>
+      prev.map((x, idx) =>
+        idx === i
+          ? { ...x, frequency: f, due_month: f === "monthly" ? null : x.due_month ?? defaultDueMonth() }
+          : x
+      )
+    );
   }
 
   function move(id: string, dir: "up" | "down", idx: number) {
@@ -94,9 +134,13 @@ export default function SettingsForm({
       </div>
 
       <div className="card">
-        <h3>Categories <span className="sub">Tap a category to see or change its details.</span></h3>
+        <h3>
+          Categories <span className="sub">Tap a category to see or change its details.</span>
+        </h3>
         {cats.map((c, i) => {
           const isOpen = expandedId === c.id;
+          const tag = frequencyTag(c.frequency);
+          const freq = c.frequency ?? "monthly";
           return (
             <div key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
               <button
@@ -116,40 +160,108 @@ export default function SettingsForm({
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)", fontSize: 13 }}>
                   {fmt(Number(c.ideal_plan_amount), currency)}
+                  {tag ? ` · ${tag}` : ""}
                   <span>{isOpen ? "▲" : "▼"}</span>
                 </span>
               </button>
-
               {isOpen && (
                 <div className="cat-edit-row" style={{ borderBottom: "none", paddingTop: 0 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <button className="remove-btn" style={{ color: "var(--muted)" }} disabled={i === 0} onClick={() => move(c.id, "up", i)}>▲</button>
-                    <button className="remove-btn" style={{ color: "var(--muted)" }} disabled={i === cats.length - 1} onClick={() => move(c.id, "down", i)}>▼</button>
+                    <button
+                      className="remove-btn"
+                      style={{ color: "var(--muted)" }}
+                      disabled={i === 0}
+                      onClick={() => move(c.id, "up", i)}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      className="remove-btn"
+                      style={{ color: "var(--muted)" }}
+                      disabled={i === cats.length - 1}
+                      onClick={() => move(c.id, "down", i)}
+                    >
+                      ▼
+                    </button>
                   </div>
                   <input
                     type="text"
                     value={c.name}
-                    onChange={(e) => setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))}
+                    onChange={(e) =>
+                      setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))
+                    }
                   />
                   <select
                     value={c.type}
-                    onChange={(e) => setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, type: e.target.value as CategoryType } : x)))}
+                    onChange={(e) =>
+                      setCats((prev) =>
+                        prev.map((x, idx) => (idx === i ? { ...x, type: e.target.value as CategoryType } : x))
+                      )
+                    }
                   >
                     {CATEGORY_TYPES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
                     ))}
                   </select>
                   <input
                     type="number"
                     value={c.ideal_plan_amount || ""}
-                    onChange={(e) => setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, ideal_plan_amount: parseFloat(e.target.value) || 0 } : x)))}
+                    onChange={(e) =>
+                      setCats((prev) =>
+                        prev.map((x, idx) =>
+                          idx === i ? { ...x, ideal_plan_amount: parseFloat(e.target.value) || 0 } : x
+                        )
+                      )
+                    }
                   />
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                  <label style={smallLabel}>
+                    Repeats
+                    <select value={freq} onChange={(e) => changeFrequency(i, e.target.value as Frequency)}>
+                      {FREQUENCY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {freq !== "monthly" && (
+                    <label style={smallLabel}>
+                      First due
+                      <select
+                        value={c.due_month ?? defaultDueMonth()}
+                        onChange={(e) =>
+                          setCats((prev) =>
+                            prev.map((x, idx) => (idx === i ? { ...x, due_month: e.target.value } : x))
+                          )
+                        }
+                      >
+                        {dueMonthOptions(c.due_month).map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={c.end_date !== null}
                       onChange={(e) =>
-                        setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.checked ? "" : null } : x)))
+                        setCats((prev) =>
+                          prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.checked ? "" : null } : x))
+                        )
                       }
                     />
                     End date
@@ -158,13 +270,22 @@ export default function SettingsForm({
                     <input
                       type="date"
                       value={c.end_date ?? ""}
-                      onChange={(e) => setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.value } : x)))}
+                      onChange={(e) =>
+                        setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.value } : x)))
+                      }
                     />
                   )}
-                  <button className="btn btn-secondary" style={{ width: "auto", padding: "6px 12px" }} onClick={() => saveCategory(c)} disabled={isPending}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: "auto", padding: "6px 12px" }}
+                    onClick={() => saveCategory(c)}
+                    disabled={isPending}
+                  >
                     Save
                   </button>
-                  <button className="remove-btn" onClick={() => removeCategory(c.id)}>remove</button>
+                  <button className="remove-btn" onClick={() => removeCategory(c.id)}>
+                    remove
+                  </button>
                 </div>
               )}
             </div>
@@ -173,26 +294,99 @@ export default function SettingsForm({
 
         {showAdd ? (
           <div className="cat-edit-row" style={{ borderBottom: "none" }}>
-            <input type="text" placeholder="New category name" value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} />
-            <select value={newCat.type} onChange={(e) => setNewCat({ ...newCat, type: e.target.value as CategoryType })}>
+            <input
+              type="text"
+              placeholder="New category name"
+              value={newCat.name}
+              onChange={(e) => setNewCat({ ...newCat, name: e.target.value })}
+            />
+            <select
+              value={newCat.type}
+              onChange={(e) => setNewCat({ ...newCat, type: e.target.value as CategoryType })}
+            >
               {CATEGORY_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>
+                  {t}
+                </option>
               ))}
             </select>
-            <input type="number" placeholder="Plan" value={newCat.idealPlanAmount || ""} onChange={(e) => setNewCat({ ...newCat, idealPlanAmount: parseFloat(e.target.value) || 0 })} />
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
-              <input type="checkbox" checked={newCat.hasEndDate} onChange={(e) => setNewCat({ ...newCat, hasEndDate: e.target.checked })} />
+            <input
+              type="number"
+              placeholder="Plan"
+              value={newCat.idealPlanAmount || ""}
+              onChange={(e) => setNewCat({ ...newCat, idealPlanAmount: parseFloat(e.target.value) || 0 })}
+            />
+            <label style={smallLabel}>
+              Repeats
+              <select
+                value={newCat.frequency}
+                onChange={(e) =>
+                  setNewCat({
+                    ...newCat,
+                    frequency: e.target.value as Frequency,
+                    dueMonth: e.target.value === "monthly" ? "" : newCat.dueMonth || defaultDueMonth(),
+                  })
+                }
+              >
+                {FREQUENCY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {newCat.frequency !== "monthly" && (
+              <label style={smallLabel}>
+                First due
+                <select
+                  value={newCat.dueMonth || defaultDueMonth()}
+                  onChange={(e) => setNewCat({ ...newCat, dueMonth: e.target.value })}
+                >
+                  {dueMonthOptions(newCat.dueMonth).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                color: "var(--muted)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={newCat.hasEndDate}
+                onChange={(e) => setNewCat({ ...newCat, hasEndDate: e.target.checked })}
+              />
               End date
             </label>
             {newCat.hasEndDate && (
-              <input type="date" value={newCat.endDate} onChange={(e) => setNewCat({ ...newCat, endDate: e.target.value })} />
+              <input
+                type="date"
+                value={newCat.endDate}
+                onChange={(e) => setNewCat({ ...newCat, endDate: e.target.value })}
+              />
             )}
-            <button className="btn btn-primary" style={{ width: "auto", padding: "6px 12px" }} onClick={addCategory} disabled={isPending}>
+            <button
+              className="btn btn-primary"
+              style={{ width: "auto", padding: "6px 12px" }}
+              onClick={addCategory}
+              disabled={isPending}
+            >
               Add
             </button>
           </div>
         ) : (
-          <button className="add-cat-btn" onClick={() => setShowAdd(true)}>+ Add category</button>
+          <button className="add-cat-btn" onClick={() => setShowAdd(true)}>
+            + Add category
+          </button>
         )}
       </div>
     </div>

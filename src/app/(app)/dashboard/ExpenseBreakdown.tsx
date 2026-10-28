@@ -8,48 +8,38 @@ const TYPES = ["Fixed Deduction", "Fluid Essential", "Personal", "Investment"] a
 
 type CatWithSoFar = Category & { soFar: number };
 
-function overPct(plan: number, spent: number): number | null {
-  if (plan > 0 && spent > plan) return Math.round(((spent - plan) / plan) * 100);
-  return null;
-}
-
-function Amount({ plan, spent, currency }: { plan: number; spent: number; currency: string }) {
+function Figures({ plan, spent, currency }: { plan: number; spent: number; currency: string }) {
   const over = spent > plan;
-  const pct = overPct(plan, spent);
+  const color = over ? "#dc2626" : "#16a34a";
+  const pct = plan > 0 ? Math.round((spent / plan) * 100) : null;
   return (
-    <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>
-      <span style={{ color: over ? "#dc2626" : undefined }}>{fmtCompact(spent, currency)}</span>
-      {" / "}
-      {fmtCompact(plan, currency)}
-      {pct !== null && <span style={{ color: "#dc2626", marginLeft: 4 }}>▲{pct}%</span>}
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        whiteSpace: "nowrap",
+        fontSize: 13,
+        fontWeight: 700,
+        color,
+      }}
+    >
+      <span>
+        {fmtCompact(spent, currency)} / {fmtCompact(plan, currency)}
+      </span>
+      {pct !== null && (
+        <span
+          style={{
+            fontSize: 11,
+            padding: "2px 7px",
+            borderRadius: 999,
+            background: over ? "#fef2f2" : "#f0fdf4",
+          }}
+        >
+          {pct}%
+        </span>
+      )}
     </span>
-  );
-}
-
-function StackedBars({ plan, spent }: { plan: number; spent: number }) {
-  const over = spent > plan;
-  const scale = Math.max(plan, spent, 1);
-  return (
-    <div style={{ minWidth: 0 }}>
-      <div style={{ height: 8, background: "#eef0f5", borderRadius: "4px 4px 0 0", overflow: "hidden" }}>
-        <div
-          style={{
-            height: "100%",
-            width: `${(plan / scale) * 100}%`,
-            background: "linear-gradient(90deg,#93c5fd,#3b82f6)",
-          }}
-        />
-      </div>
-      <div style={{ height: 8, background: "#eef0f5", borderRadius: "0 0 4px 4px", overflow: "hidden", borderTop: "1px solid #fff" }}>
-        <div
-          style={{
-            height: "100%",
-            width: `${(spent / scale) * 100}%`,
-            background: over ? "linear-gradient(90deg,#fca5a5,#dc2626)" : "linear-gradient(90deg,#6ee7b7,#16a34a)",
-          }}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -83,13 +73,13 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
           <div key={type} style={{ marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid #f1f2f6" }}>
             <div
               onClick={() => toggle(type)}
-              style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
             >
               <span style={{ fontWeight: 700, fontSize: 14 }}>
                 <span style={{ display: "inline-block", width: 14, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
                 {type}
               </span>
-              <Amount plan={typePlan} spent={typeSpent} currency={currency} />
+              <Figures plan={typePlan} spent={typeSpent} currency={currency} />
             </div>
 
             {isOpen &&
@@ -97,19 +87,18 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
                 <div
                   key={c.id}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "80px minmax(40px, 1fr) auto",
-                    columnGap: 8,
+                    display: "flex",
+                    justifyContent: "space-between",
                     alignItems: "center",
+                    gap: 8,
                     marginTop: 10,
-                    paddingLeft: 12,
+                    paddingLeft: 14,
                   }}
                 >
-                  <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.name}
                   </span>
-                  <StackedBars plan={Number(c.ideal_plan_amount)} spent={c.soFar} />
-                  <Amount plan={Number(c.ideal_plan_amount)} spent={c.soFar} currency={currency} />
+                  <Figures plan={Number(c.ideal_plan_amount)} spent={c.soFar} currency={currency} />
                 </div>
               ))}
           </div>
@@ -122,12 +111,13 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: 8,
             paddingTop: 10,
             borderTop: "2px solid #e5e7eb",
           }}
         >
           <span style={{ fontWeight: 800, fontSize: 14 }}>Total</span>
-          <Amount plan={grandPlan} spent={grandSpent} currency={currency} />
+          <Figures plan={grandPlan} spent={grandSpent} currency={currency} />
         </div>
       )}
     </div>

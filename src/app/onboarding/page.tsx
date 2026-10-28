@@ -4,8 +4,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_CATEGORIES, CATEGORY_TYPES, CategoryType } from "@/lib/categories";
 import { completeOnboarding } from "@/lib/actions";
+import { FREQUENCY_OPTIONS, Frequency, dueMonthOptions, defaultDueMonth } from "@/lib/frequency";
 
-type Row = { name: string; type: CategoryType; idealPlanAmount: number; endDate: string | null };
+type Row = {
+  name: string;
+  type: CategoryType;
+  idealPlanAmount: number;
+  endDate: string | null;
+  frequency: Frequency;
+  dueMonth: string | null;
+};
+
+const smallLabel: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  fontSize: 11,
+  color: "var(--muted)",
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -13,7 +29,14 @@ export default function OnboardingPage() {
   const [currency, setCurrency] = useState("₹");
   const [income, setIncome] = useState(0);
   const [rows, setRows] = useState<Row[]>(
-    DEFAULT_CATEGORIES.map((c) => ({ name: c.name, type: c.type, idealPlanAmount: 0, endDate: null }))
+    DEFAULT_CATEGORIES.map((c) => ({
+      name: c.name,
+      type: c.type,
+      idealPlanAmount: 0,
+      endDate: null,
+      frequency: "monthly" as Frequency,
+      dueMonth: null,
+    }))
   );
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -22,12 +45,19 @@ export default function OnboardingPage() {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
+  function changeFrequency(i: number, f: Frequency) {
+    updateRow(i, { frequency: f, dueMonth: f === "monthly" ? null : rows[i].dueMonth ?? defaultDueMonth() });
+  }
+
   function removeRow(i: number) {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   function addRow(type: CategoryType) {
-    setRows((prev) => [...prev, { name: "", type, idealPlanAmount: 0, endDate: null }]);
+    setRows((prev) => [
+      ...prev,
+      { name: "", type, idealPlanAmount: 0, endDate: null, frequency: "monthly", dueMonth: null },
+    ]);
   }
 
   function moveRow(i: number, dir: -1 | 1) {
@@ -110,17 +140,32 @@ export default function OnboardingPage() {
                       fontSize: 13,
                     }}
                   >
-                    <span>{type} <span style={{ color: "var(--muted)", fontWeight: 500 }}>({groupRows.length})</span></span>
+                    <span>
+                      {type} <span style={{ color: "var(--muted)", fontWeight: 500 }}>({groupRows.length})</span>
+                    </span>
                     <span>{isOpen ? "▲" : "▼"}</span>
                   </button>
-
                   {isOpen && (
                     <div style={{ padding: "0 14px 12px" }}>
                       {groupRows.map(({ r, idx }, posInGroup) => (
                         <div className="cat-edit-row" key={idx}>
                           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            <button className="remove-btn" style={{ color: "var(--muted)" }} disabled={posInGroup === 0} onClick={() => moveRow(idx, -1)}>▲</button>
-                            <button className="remove-btn" style={{ color: "var(--muted)" }} disabled={posInGroup === groupRows.length - 1} onClick={() => moveRow(idx, 1)}>▼</button>
+                            <button
+                              className="remove-btn"
+                              style={{ color: "var(--muted)" }}
+                              disabled={posInGroup === 0}
+                              onClick={() => moveRow(idx, -1)}
+                            >
+                              ▲
+                            </button>
+                            <button
+                              className="remove-btn"
+                              style={{ color: "var(--muted)" }}
+                              disabled={posInGroup === groupRows.length - 1}
+                              onClick={() => moveRow(idx, 1)}
+                            >
+                              ▼
+                            </button>
                           </div>
                           <input
                             type="text"
@@ -134,7 +179,44 @@ export default function OnboardingPage() {
                             onChange={(e) => updateRow(idx, { idealPlanAmount: parseFloat(e.target.value) || 0 })}
                             placeholder="Plan ₹"
                           />
-                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                          <label style={smallLabel}>
+                            Repeats
+                            <select
+                              value={r.frequency}
+                              onChange={(e) => changeFrequency(idx, e.target.value as Frequency)}
+                            >
+                              {FREQUENCY_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {r.frequency !== "monthly" && (
+                            <label style={smallLabel}>
+                              First due
+                              <select
+                                value={r.dueMonth ?? defaultDueMonth()}
+                                onChange={(e) => updateRow(idx, { dueMonth: e.target.value })}
+                              >
+                                {dueMonthOptions(r.dueMonth).map((o) => (
+                                  <option key={o.value} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              fontSize: 12,
+                              color: "var(--muted)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             <input
                               type="checkbox"
                               checked={r.endDate !== null}
@@ -149,18 +231,26 @@ export default function OnboardingPage() {
                               onChange={(e) => updateRow(idx, { endDate: e.target.value })}
                             />
                           )}
-                          <button className="remove-btn" onClick={() => removeRow(idx)}>remove</button>
+                          <button className="remove-btn" onClick={() => removeRow(idx)}>
+                            remove
+                          </button>
                         </div>
                       ))}
-                      <button className="add-cat-btn" onClick={() => addRow(type)}>+ Add to {type}</button>
+                      <button className="add-cat-btn" onClick={() => addRow(type)}>
+                        + Add to {type}
+                      </button>
                     </div>
                   )}
                 </div>
               );
             })}
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-              <button className="btn btn-secondary" onClick={() => setStep(0)}>Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(2)}>Next</button>
+              <button className="btn btn-secondary" onClick={() => setStep(0)}>
+                Back
+              </button>
+              <button className="btn btn-primary" onClick={() => setStep(2)}>
+                Next
+              </button>
             </div>
           </div>
         )}
@@ -169,11 +259,13 @@ export default function OnboardingPage() {
           <div className="card">
             <h3>Ready to go</h3>
             <p style={{ color: "var(--muted)", fontSize: 13 }}>
-              {rows.filter((r) => r.name.trim()).length} categories, {currency}
-              {income.toLocaleString()} monthly income. You can change any of this later from Settings.
+              {rows.filter((r) => r.name.trim()).length} categories, {currency} {income.toLocaleString()} monthly
+              income. You can change any of this later from Settings.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-              <button className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
+              <button className="btn btn-secondary" onClick={() => setStep(1)}>
+                Back
+              </button>
               <button className="btn btn-primary" onClick={finish} disabled={submitting}>
                 {submitting ? "Setting up…" : "Finish & go to Dashboard"}
               </button>

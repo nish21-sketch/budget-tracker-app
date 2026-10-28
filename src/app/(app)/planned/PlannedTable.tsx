@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fmt, monthLabel } from "@/lib/utils";
+import { isDueInMonth, frequencyTag } from "@/lib/frequency";
 import type { Category } from "@/lib/data";
 
 const TYPES = ["Fixed Deduction", "Fluid Essential", "Personal", "Investment"] as const;
@@ -19,7 +20,10 @@ export default function PlannedTable({
   income: number;
   currency: string;
 }) {
-  const months = monthsIso.map((s) => new Date(s));
+  const months = monthsIso.map((s) => {
+    const d = new Date(s);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), 1);
+  });
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   function toggle(type: string) {
@@ -27,6 +31,7 @@ export default function PlannedTable({
   }
 
   function planForMonth(cat: CatWithSoFar, monthDate: Date) {
+    if (!isDueInMonth(cat.frequency, cat.due_month, monthDate)) return 0;
     if (cat.end_date) {
       const end = new Date(cat.end_date);
       if (monthDate >= new Date(end.getFullYear(), end.getMonth(), 1)) return 0;
@@ -87,27 +92,33 @@ export default function PlannedTable({
                     <td key={i} className={i === 0 ? "current-col" : ""}>{fmt(subtotal(type, m, i), currency)}</td>
                   ))}
                 </tr>
-                {isOpen && typeCats.map((cat) => (
-                  <tr key={cat.id}>
-                    <td>
-                      <div className="cat-cell" style={{ paddingLeft: 12 }}>
-                        {cat.name}
-                        <span className="cat-meta">
-                          Plan: {fmt(Number(cat.ideal_plan_amount), currency)}
-                          {cat.end_date ? ` · ends ${monthLabel(new Date(cat.end_date))}` : ""}
-                        </span>
-                      </div>
-                    </td>
-                    {months.map((m, i) => {
-                      if (i === 0) {
-                        const over = cat.soFar > Number(cat.ideal_plan_amount) && Number(cat.ideal_plan_amount) > 0;
-                        return <td key={i} className={`current-col ${over ? "over" : ""}`}>{fmt(cat.soFar, currency)}</td>;
-                      }
-                      const amt = planForMonth(cat, m);
-                      return <td key={i} className={amt === 0 && cat.end_date ? "zeroed" : ""}>{fmt(amt, currency)}</td>;
-                    })}
-                  </tr>
-                ))}
+                {isOpen && typeCats.map((cat) => {
+                  const tag = frequencyTag(cat.frequency);
+                  return (
+                    <tr key={cat.id}>
+                      <td>
+                        <div className="cat-cell" style={{ paddingLeft: 12 }}>
+                          {cat.name}
+                          <span className="cat-meta">
+                            Plan: {fmt(Number(cat.ideal_plan_amount), currency)}
+                            {tag ? ` · ${tag}` : ""}
+                            {cat.end_date ? ` · ends ${monthLabel(new Date(cat.end_date))}` : ""}
+                          </span>
+                        </div>
+                      </td>
+                      {months.map((m, i) => {
+                        if (i === 0) {
+                          const plan = planForMonth(cat, m);
+                          const over = cat.soFar > plan && plan > 0;
+                          return <td key={i} className={`current-col ${over ? "over" : ""}`}>{fmt(cat.soFar, currency)}</td>;
+                        }
+                        const amt = planForMonth(cat, m);
+                        const dimmed = amt === 0 && (!!cat.end_date || (cat.frequency ?? "monthly") !== "monthly");
+                        return <td key={i} className={dimmed ? "zeroed" : ""}>{fmt(amt, currency)}</td>;
+                      })}
+                    </tr>
+                  );
+                })}
               </>
             );
           })}
