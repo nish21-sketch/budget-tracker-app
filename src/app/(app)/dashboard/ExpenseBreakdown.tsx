@@ -14,36 +14,13 @@ function Figures({ plan, spent, currency }: { plan: number; spent: number; curre
   let badge: string | null = null;
   if (plan > 0) {
     badge = over
-      ? `▲ ${Math.max(1, Math.round(((spent - plan) / plan) * 100))}%`
+      ? `▲${Math.max(1, Math.round(((spent - plan) / plan) * 100))}%`
       : `${Math.round((spent / plan) * 100)}%`;
   }
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        whiteSpace: "nowrap",
-        fontSize: 13,
-        fontWeight: 700,
-        color,
-      }}
-    >
-      <span>
-        {fmtCompact(spent, currency)} / {fmtCompact(plan, currency)}
-      </span>
-      {badge && (
-        <span
-          style={{
-            fontSize: 11,
-            padding: "2px 7px",
-            borderRadius: 999,
-            background: over ? "#fef2f2" : "#f0fdf4",
-          }}
-        >
-          {badge}
-        </span>
-      )}
+    <span style={{ whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, color }}>
+      {fmtCompact(spent, currency)} / {fmtCompact(plan, currency)}
+      {badge && <span style={{ fontSize: 11, marginLeft: 5 }}>{badge}</span>}
     </span>
   );
 }
