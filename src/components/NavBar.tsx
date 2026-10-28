@@ -17,7 +17,7 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
 
   return (
     <div className="topbar">
-      <div className="logo"><span className="mark">₹</span> BudgetApp</div>
+      <div className="logo"><span className="mark">₹</span> Track Kar</div>
       <div className="topbar-right">
         <div className="navtabs">
           {links.map((l) => (

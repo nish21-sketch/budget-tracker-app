@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BudgetApp",
+  title: "Track Kar",
   description: "Free, simple budget tracking.",
 };
 

@@ -51,7 +51,7 @@ export default function LoginPage() {
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: "var(--accent, #6366f1)" }}>₹</span> BudgetApp
+          <span style={{ color: "var(--accent, #6366f1)" }}>₹</span> Track Kar
         </div>
 
         {!sent ? (

@@ -11,7 +11,12 @@ type CatWithSoFar = Category & { soFar: number };
 function Figures({ plan, spent, currency }: { plan: number; spent: number; currency: string }) {
   const over = spent > plan;
   const color = over ? "#dc2626" : "#16a34a";
-  const pct = plan > 0 ? Math.round((spent / plan) * 100) : null;
+  let badge: string | null = null;
+  if (plan > 0) {
+    badge = over
+      ? `▲ ${Math.max(1, Math.round(((spent - plan) / plan) * 100))}%`
+      : `${Math.round((spent / plan) * 100)}%`;
+  }
   return (
     <span
       style={{
@@ -27,7 +32,7 @@ function Figures({ plan, spent, currency }: { plan: number; spent: number; curre
       <span>
         {fmtCompact(spent, currency)} / {fmtCompact(plan, currency)}
       </span>
-      {pct !== null && (
+      {badge && (
         <span
           style={{
             fontSize: 11,
@@ -36,7 +41,7 @@ function Figures({ plan, spent, currency }: { plan: number; spent: number; curre
             background: over ? "#fef2f2" : "#f0fdf4",
           }}
         >
-          {pct}%
+          {badge}
         </span>
       )}
     </span>
