@@ -80,6 +80,30 @@ export async function getSoFarByCategory(month?: Date): Promise<Record<string, n
   return map;
 }
 
+// Spend per category across a window of cycles [from, toExclusive),
+// plus how many of those cycles had any spending at all.
+export async function getCategoryHistory(
+  from: Date,
+  toExclusive: Date
+): Promise<{ totals: Record<string, number>; monthCount: number }> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return { totals: {}, monthCount: 0 };
+  const { data } = await supabase
+    .from("transactions")
+    .select("category_id, amount, month")
+    .eq("user_id", user.id)
+    .gte("month", toDateInputValue(from))
+    .lt("month", toDateInputValue(toExclusive));
+  const totals: Record<string, number> = {};
+  const months = new Set<string>();
+  (data ?? []).forEach((row) => {
+    totals[row.category_id] = (totals[row.category_id] ?? 0) + Number(row.amount);
+    months.add(String(row.month));
+  });
+  return { totals, monthCount: months.size };
+}
+
 // Total non-Investment spend per cycle, keyed by first-of-month date (YYYY-MM-DD)
 export async function getMonthlySpendTotals(): Promise<Record<string, number>> {
   const supabase = await createClient();

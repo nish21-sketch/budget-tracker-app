@@ -34,6 +34,20 @@ export function isDueInMonth(
   return ((diff % interval) + interval) % interval === 0;
 }
 
+// The next month after `from` (within `horizon` months) in which the category is due.
+export function nextDueAfter(
+  frequency: string | null | undefined,
+  dueMonth: string | null | undefined,
+  from: Date,
+  horizon = 12
+): { date: Date; monthsAway: number } | null {
+  for (let i = 1; i <= horizon; i++) {
+    const d = new Date(from.getFullYear(), from.getMonth() + i, 1);
+    if (isDueInMonth(frequency, dueMonth, d)) return { date: d, monthsAway: i };
+  }
+  return null;
+}
+
 function monthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }

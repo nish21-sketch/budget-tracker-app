@@ -1,8 +1,19 @@
 import Link from "next/link";
-import { getCategories, getIncome, getSoFarByCategory, getProfile, getActiveCycle } from "@/lib/data";
+import {
+  getCategories,
+  getIncome,
+  getSoFarByCategory,
+  getProfile,
+  getActiveCycle,
+  getCategoryHistory,
+} from "@/lib/data";
 import { fmt, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
-import { isDueInMonth } from "@/lib/frequency";
+import { isDueInMonth, nextDueAfter } from "@/lib/frequency";
 import ExpenseBreakdown from "./ExpenseBreakdown";
+import BillsCard from "./BillsCard";
+import type { BillRow, UpcomingRow } from "./BillsCard";
+
+type TrendLine = { id: string; name: string; spent: number; avg: number; pct: number };
 
 export default async function DashboardPage({
   searchParams,
@@ -22,12 +33,13 @@ export default async function DashboardPage({
   const now = viewing;
   const prevMonth = addMonths(now, -1);
 
-  const [categories, income, soFarMap, profile, prevSoFarMap] = await Promise.all([
+  const [categories, income, soFarMap, profile, prevSoFarMap, history] = await Promise.all([
     getCategories(),
     getIncome(),
     getSoFarByCategory(now),
     getProfile(),
     getSoFarByCategory(prevMonth),
+    getCategoryHistory(addMonths(now, -3), now),
   ]);
   const currency = profile?.currency ?? "₹";
   const cats = categories.map((c) => ({
@@ -71,6 +83,78 @@ export default async function DashboardPage({
   const showProjection = !isPast && elapsed > 0 && totalPlanAll > 0;
   const projectedTotal = elapsed > 0 ? Math.round((totalSpentAll / elapsed) * dim) : 0;
   const projDeltaPct = totalPlanAll > 0 ? Math.round(((projectedTotal - totalPlanAll) / totalPlanAll) * 100) : 0;
+
+  // Safe to spend: flexible budgets (Fluid Essential + Personal) left, spread over the days left
+  const flexTypes: string[] = ["Fluid Essential", "Personal"];
+  const flexCats = cats.filter((c) => flexTypes.includes(c.type));
+  const flexPlan = flexCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
+  const flexSpent = flexCats.reduce((s, c) => s + c.soFar, 0);
+  const flexLeft = flexPlan - flexSpent;
+  const daysLeft = elapsed === 0 ? dim : Math.max(1, dim - elapsed + 1);
+  const perDay = flexLeft > 0 ? Math.floor(flexLeft / daysLeft) : 0;
+  const showSafe = !isPast && flexPlan > 0;
+
+  // Bills: Fixed Deduction categories plus anything that repeats less often than monthly
+  function hasEnded(endDate: string | null) {
+    if (!endDate) return false;
+    const e = new Date(endDate);
+    return now >= new Date(e.getFullYear(), e.getMonth(), 1);
+  }
+  const billCats = categories.filter(
+    (c) => c.type === "Fixed Deduction" || (c.frequency ?? "monthly") !== "monthly"
+  );
+  const billsToPay: BillRow[] = billCats
+    .filter(
+      (c) =>
+        !hasEnded(c.end_date) &&
+        isDueInMonth(c.frequency, c.due_month, now) &&
+        Number(c.ideal_plan_amount) > 0
+    )
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      plan: Number(c.ideal_plan_amount),
+      paid: soFarMap[c.id] ?? 0,
+    }));
+  const upcomingBills: UpcomingRow[] = billCats
+    .filter(
+      (c) =>
+        (c.frequency ?? "monthly") !== "monthly" &&
+        !hasEnded(c.end_date) &&
+        !isDueInMonth(c.frequency, c.due_month, now) &&
+        Number(c.ideal_plan_amount) > 0
+    )
+    .map((c) => {
+      const n = nextDueAfter(c.frequency, c.due_month, now);
+      return n
+        ? {
+            id: c.id,
+            name: c.name,
+            amount: Number(c.ideal_plan_amount),
+            dueLabel: monthLabel(n.date),
+            monthsAway: n.monthsAway,
+          }
+        : null;
+    })
+    .filter((x): x is UpcomingRow => x !== null)
+    .sort((a, b) => a.monthsAway - b.monthsAway);
+  const showBills = !isPast && billsToPay.length + upcomingBills.length > 0;
+
+  // Category trend vs the average of the previous 3 cycles
+  const trendLines: TrendLine[] =
+    history.monthCount > 0
+      ? cats
+          .filter((c) => c.soFar > 0)
+          .map((c): TrendLine | null => {
+            const avg = (history.totals[c.id] ?? 0) / history.monthCount;
+            if (avg <= 0) return null;
+            const pct = Math.round(((c.soFar - avg) / avg) * 100);
+            return { id: c.id, name: c.name, spent: c.soFar, avg, pct };
+          })
+          .filter((x): x is TrendLine => x !== null && (isPast ? Math.abs(x.pct) >= 25 : x.pct >= 25))
+          .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+          .slice(0, 3)
+      : [];
 
   return (
     <div>
@@ -118,6 +202,39 @@ export default async function DashboardPage({
         <div className="card kpi-card"><div className="label">Investment (so far)</div><div className="value">{fmt(totalInvestment, currency)}</div></div>
         <div className="card kpi-card"><div className="label">Cash in Hand</div><div className="value" style={{ color: cashInHand < 0 ? "#dc2626" : "#16a34a" }}>{fmt(cashInHand, currency)}</div></div>
       </div>
+
+      {showSafe && (
+        <div
+          className="card"
+          style={{ marginBottom: 16, borderLeft: `4px solid ${flexLeft > 0 ? "#16a34a" : "#dc2626"}` }}
+        >
+          <div style={{ fontSize: 12, color: "#6b7280" }}>Safe to spend today</div>
+          {flexLeft > 0 ? (
+            <>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#16a34a" }}>
+                {fmt(perDay, currency)}{" "}
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#6b7280" }}>a day</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                {`${fmt(flexLeft, currency)} left for the next ${daysLeft} day${daysLeft === 1 ? "" : "s"} · Fluid Essential + Personal`}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#dc2626" }}>Flexible budget used up</div>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                {flexLeft < 0
+                  ? `${fmt(Math.abs(flexLeft), currency)} over · Fluid Essential + Personal`
+                  : "Nothing left in Fluid Essential + Personal"}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {showBills && (
+        <BillsCard key={now.toISOString()} bills={billsToPay} upcoming={upcomingBills} currency={currency} />
+      )}
 
       {cats.length === 0 && (
         <div className="card" style={{ marginBottom: 16, color: "var(--muted)" }}>
@@ -181,6 +298,11 @@ export default async function DashboardPage({
                 {`${trendPct >= 0 ? "📈" : "📉"} ${isPast ? `You spent ${fmt(totalSpentAll, currency)} in ${monthLabel(viewing)}` : `You've spent ${fmt(totalSpentAll, currency)} so far this cycle`} — ${Math.abs(trendPct)}% ${trendPct >= 0 ? "more" : "less"} than you spent in ${monthLabel(prevMonth)} (${fmt(prevTotalSpent, currency)}).`}
               </div>
             )}
+            {trendLines.map((t) => (
+              <div key={t.id} className={`insight-line ${t.pct > 0 ? "warn" : ""}`}>
+                {`${t.pct > 0 ? "▲" : "▼"} ${t.name}: ${fmt(t.spent, currency)}${isPast ? "" : " so far"} — ${Math.abs(t.pct)}% ${t.pct > 0 ? "above" : "below"} your ${history.monthCount}-month average (${fmt(Math.round(t.avg), currency)}).`}
+              </div>
+            ))}
             {showProjection && (
               <div className={`insight-line ${projDeltaPct > 0 ? "warn" : ""}`}>
                 {`🔮 At this pace, you're projected to spend ${fmt(projectedTotal, currency)} by the end of the cycle — ${projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your ${fmt(totalPlanAll, currency)} plan.`}
