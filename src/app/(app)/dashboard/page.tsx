@@ -94,14 +94,17 @@ export default async function DashboardPage({
   const perDay = flexLeft > 0 ? Math.floor(flexLeft / daysLeft) : 0;
   const showSafe = !isPast && flexPlan > 0;
 
-  // Bills: Fixed Deduction categories plus anything that repeats less often than monthly
+  // Bills: Fixed Deduction + Investment categories, plus anything that repeats less often than monthly
   function hasEnded(endDate: string | null) {
     if (!endDate) return false;
     const e = new Date(endDate);
     return now >= new Date(e.getFullYear(), e.getMonth(), 1);
   }
   const billCats = categories.filter(
-    (c) => c.type === "Fixed Deduction" || (c.frequency ?? "monthly") !== "monthly"
+    (c) =>
+      c.type === "Fixed Deduction" ||
+      c.type === "Investment" ||
+      (c.frequency ?? "monthly") !== "monthly"
   );
   const billsToPay: BillRow[] = billCats
     .filter(
@@ -242,31 +245,6 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {emiCats.length > 0 && (
-        <div className="emi-row">
-          {emiCats.map((c) => {
-            const end = new Date(c.end_date!);
-            const ended = end <= now;
-            const monthsLeft = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
-            return (
-              <div className="card emi-card" key={c.id}>
-                <div className="info">
-                  <div className="name">{c.name}</div>
-                  <div className="sub">{fmt(Number(c.ideal_plan_amount), currency)} / month · {ended ? "ended" : "ends"} {monthLabel(end)}</div>
-                </div>
-                <div className={`emi-badge ${ended ? "ended" : "active"}`}>{ended ? "Ended ✓" : `${monthsLeft} months left`}</div>
-              </div>
-            );
-          })}
-          {!isPast &&
-            emiCats.filter((c) => new Date(c.end_date!) <= now).map((c) => (
-              <div className="emi-ended-note" key={c.id + "-note"}>
-                {`💡 ${c.name} ended — ${fmt(Number(c.ideal_plan_amount), currency)}/month is now free. Consider redirecting it to your Emergency Fund or SIP.`}
-              </div>
-            ))}
-        </div>
-      )}
-
       <div className="grid-2">
         <div className="card">
           <h3>Budget Pace <span className="sub">Are you spending faster than the cycle is passing?</span></h3>
@@ -313,6 +291,47 @@ export default async function DashboardPage({
       </div>
 
       <ExpenseBreakdown cats={cats} currency={currency} />
+
+      {emiCats.length > 0 && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <h3>EMIs</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+            {emiCats.map((c) => {
+              const end = new Date(c.end_date!);
+              const ended = end <= now;
+              const monthsLeft = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
+              return (
+                <div key={c.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6b7280", margin: "2px 0 6px" }}>
+                    {fmt(Number(c.ideal_plan_amount), currency)} / month · {ended ? "ended" : "ends"} {monthLabel(end)}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: ended ? "#ecfdf5" : "#eef2ff",
+                      color: ended ? "#059669" : "#4f46e5",
+                    }}
+                  >
+                    {ended ? "Ended ✓" : `${monthsLeft} months left`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {!isPast &&
+            emiCats.filter((c) => new Date(c.end_date!) <= now).map((c) => (
+              <div key={c.id + "-note"} style={{ fontSize: 12, color: "#6b7280", marginTop: 10 }}>
+                {`💡 ${c.name} ended — ${fmt(Number(c.ideal_plan_amount), currency)}/month is now free. Consider redirecting it to your Emergency Fund or SIP.`}
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }
