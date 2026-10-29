@@ -4,7 +4,7 @@ import {
   getIncome,
   getSoFarByCategory,
   getProfile,
-  getActiveCycle,
+  getActiveCycleStart,
   getCategoryHistory,
 } from "@/lib/data";
 import { fmt, addMonths, daysInMonth, monthLabel } from "@/lib/utils";
@@ -21,7 +21,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ cycle?: string }>;
 }) {
   const sp = await searchParams;
-  const active = await getActiveCycle();
+  const { cycle: active, start: activeStart } = await getActiveCycleStart();
 
   let viewing = active;
   if (typeof sp.cycle === "string" && /^\d{4}-\d{2}-01$/.test(sp.cycle)) {
@@ -31,6 +31,7 @@ export default async function DashboardPage({
   }
   const isPast = viewing < active;
   const now = viewing;
+  const cycleStart = isPast ? viewing : activeStart;
   const prevMonth = addMonths(now, -1);
 
   const [categories, income, soFarMap, profile, prevSoFarMap, history] = await Promise.all([
@@ -64,10 +65,11 @@ export default async function DashboardPage({
 
   const emiCats = cats.filter((c) => c.end_date);
 
+  // Days into the cycle, counted from the day it actually began (the day you tapped Start, if early)
   const today = new Date();
   const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dim = daysInMonth(now);
-  const elapsed = Math.min(dim, Math.max(0, Math.floor((todayMid.getTime() - now.getTime()) / 86400000) + 1));
+  const elapsed = Math.min(dim, Math.max(0, Math.floor((todayMid.getTime() - cycleStart.getTime()) / 86400000) + 1));
   const timePct = Math.round((elapsed / dim) * 100);
 
   const totalPlanAll = cats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
@@ -249,7 +251,7 @@ export default async function DashboardPage({
         <div className="card">
           <h3>Budget Pace <span className="sub">Are you spending faster than the cycle is passing?</span></h3>
           <div className="goal-block">
-            <div className="goal-label">Cycle elapsed</div>
+            <div className="goal-label">{`Cycle elapsed${elapsed > 0 ? ` · day ${elapsed} of ${dim}` : ""}`}</div>
             <div className="progress-track"><div className="progress-fill" style={{ width: `${timePct}%`, background: "linear-gradient(90deg,#a5b4fc,#6366f1)" }} /></div>
           </div>
           <div className="goal-block">

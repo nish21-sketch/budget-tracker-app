@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { fmtCompact } from "@/lib/utils";
 import type { Category } from "@/lib/data";
 
 const TYPES = ["Fixed Deduction", "Fluid Essential", "Personal", "Investment"] as const;
 
 type CatWithSoFar = Category & { soFar: number };
+
+function money(n: number, currency: string) {
+  return currency + Math.round(n).toLocaleString("en-IN");
+}
 
 function Figures({ plan, spent, currency }: { plan: number; spent: number; currency: string }) {
   const over = spent > plan;
@@ -18,9 +21,35 @@ function Figures({ plan, spent, currency }: { plan: number; spent: number; curre
       : `${Math.round((spent / plan) * 100)}%`;
   }
   return (
-    <span style={{ whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, color }}>
-      {fmtCompact(spent, currency)} / {fmtCompact(plan, currency)}
-      {badge && <span style={{ fontSize: 11, marginLeft: 5 }}>{badge}</span>}
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        whiteSpace: "nowrap",
+        fontSize: 13,
+        fontWeight: 700,
+      }}
+    >
+      <span>
+        <span style={{ color }}>{money(spent, currency)}</span>
+        <span style={{ color: "#111827" }}> / {money(plan, currency)}</span>
+      </span>
+      {badge && (
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            lineHeight: 1.2,
+            padding: "1px 5px",
+            borderRadius: 999,
+            color,
+            background: over ? "#fef2f2" : "#f0fdf4",
+          }}
+        >
+          {badge}
+        </span>
+      )}
     </span>
   );
 }

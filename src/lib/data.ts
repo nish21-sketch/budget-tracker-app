@@ -26,16 +26,31 @@ export async function getProfile() {
   return data;
 }
 
-// The cycle the user is currently in: the calendar month, unless they started the next one early.
-export async function getActiveCycle(): Promise<Date> {
+// The cycle the user is in, and the day it actually began.
+// Normally the calendar month, starting on the 1st. If the user started the next cycle early,
+// the cycle is that month and it began on the day they tapped Start.
+export async function getActiveCycleStart(): Promise<{ cycle: Date; start: Date }> {
   const calendar = firstOfMonth();
-  const profile = await getProfile();
-  const raw = (profile as { current_cycle?: string | null } | null)?.current_cycle;
-  if (!raw) return calendar;
+  const profile = (await getProfile()) as
+    | { current_cycle?: string | null; cycle_started_on?: string | null }
+    | null;
+  const raw = profile?.current_cycle;
+  if (!raw) return { cycle: calendar, start: calendar };
   const [y, m] = raw.split("-").map(Number);
-  if (!y || !m) return calendar;
+  if (!y || !m) return { cycle: calendar, start: calendar };
   const stored = new Date(y, m - 1, 1);
-  return stored > calendar ? stored : calendar;
+  if (stored < calendar) return { cycle: calendar, start: calendar };
+  let start = stored;
+  const s = profile?.cycle_started_on;
+  if (s) {
+    const [sy, sm, sd] = s.split("-").map(Number);
+    if (sy && sm && sd) start = new Date(sy, sm - 1, sd);
+  }
+  return { cycle: stored, start };
+}
+
+export async function getActiveCycle(): Promise<Date> {
+  return (await getActiveCycleStart()).cycle;
 }
 
 export async function getIncome() {

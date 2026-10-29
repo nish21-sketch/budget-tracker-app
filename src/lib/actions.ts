@@ -87,6 +87,8 @@ export async function startNextCycle() {
   const next = addMonths(active, 1);
   if (next > addMonths(firstOfMonth(), 1)) return;
   await supabase.from("profiles").update({ current_cycle: toDateInputValue(next) }).eq("id", user!.id);
+  // Saved separately so the cycle still starts even if this column hasn't been added yet
+  await supabase.from("profiles").update({ cycle_started_on: toDateInputValue(new Date()) }).eq("id", user!.id);
   revalidatePath("/", "layout");
 }
 
@@ -97,6 +99,7 @@ export async function undoEarlyCycle() {
   const active = await getActiveCycle();
   if (active <= firstOfMonth()) return;
   await supabase.from("profiles").update({ current_cycle: null }).eq("id", user!.id);
+  await supabase.from("profiles").update({ cycle_started_on: null }).eq("id", user!.id);
   revalidatePath("/", "layout");
 }
 
