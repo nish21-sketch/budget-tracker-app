@@ -61,9 +61,10 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
     setOpen((o) => ({ ...o, [type]: !o[type] }));
   }
 
+  // Rows listed are only categories with spend, but budgets always count every category.
   const activeCats = cats.filter((c) => c.soFar > 0);
-  const grandSpent = activeCats.reduce((s, c) => s + c.soFar, 0);
-  const grandPlan = activeCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
+  const grandSpent = cats.reduce((s, c) => s + c.soFar, 0);
+  const grandPlan = cats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
 
   return (
     <div className="card">
@@ -74,11 +75,12 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
       )}
 
       {TYPES.map((type) => {
-        const typeCats = activeCats.filter((c) => c.type === type);
-        if (typeCats.length === 0) return null;
+        const typeActive = activeCats.filter((c) => c.type === type);
+        if (typeActive.length === 0) return null;
+        const typeAll = cats.filter((c) => c.type === type);
         const isOpen = !!open[type];
-        const typeSpent = typeCats.reduce((s, c) => s + c.soFar, 0);
-        const typePlan = typeCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
+        const typeSpent = typeAll.reduce((s, c) => s + c.soFar, 0);
+        const typePlan = typeAll.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
 
         return (
           <div key={type} style={{ marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid #f1f2f6" }}>
@@ -94,7 +96,7 @@ export default function ExpenseBreakdown({ cats, currency }: { cats: CatWithSoFa
             </div>
 
             {isOpen &&
-              typeCats.map((c) => (
+              typeActive.map((c) => (
                 <div
                   key={c.id}
                   style={{

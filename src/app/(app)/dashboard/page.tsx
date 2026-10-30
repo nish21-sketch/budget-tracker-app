@@ -82,10 +82,6 @@ export default async function DashboardPage({
   const prevTotalSpent = cats.reduce((s, c) => s + (prevSoFarMap[c.id] ?? 0), 0);
   const trendPct = prevTotalSpent > 0 ? Math.round(((totalSpentAll - prevTotalSpent) / prevTotalSpent) * 100) : null;
 
-  const showProjection = !isPast && elapsed > 0 && totalPlanAll > 0;
-  const projectedTotal = elapsed > 0 ? Math.round((totalSpentAll / elapsed) * dim) : 0;
-  const projDeltaPct = totalPlanAll > 0 ? Math.round(((projectedTotal - totalPlanAll) / totalPlanAll) * 100) : 0;
-
   // Safe to spend: flexible budgets (Fluid Essential + Personal) left, spread over the days left
   const flexTypes: string[] = ["Fluid Essential", "Personal"];
   const flexCats = cats.filter((c) => flexTypes.includes(c.type));
@@ -95,6 +91,17 @@ export default async function DashboardPage({
   const daysLeft = elapsed === 0 ? dim : Math.max(1, dim - elapsed + 1);
   const perDay = flexLeft > 0 ? Math.floor(flexLeft / daysLeft) : 0;
   const showSafe = !isPast && flexPlan > 0;
+
+  // Pace forecast: fixed bills count in full, only flexible spending is projected forward.
+  // Compared with the same Spend Budget shown in the top tile.
+  const fixedCats = cats.filter((c) => c.type === "Fixed Deduction");
+  const fixedSpent = fixedCats.reduce((s, c) => s + c.soFar, 0);
+  const fixedPlan = fixedCats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
+  const forecastReady = !isPast && elapsed >= 5 && spendBudget > 0;
+  const projectedSpend =
+    Math.max(fixedSpent, fixedPlan) + (elapsed > 0 ? Math.round((flexSpent / elapsed) * dim) : 0);
+  const projDeltaPct = spendBudget > 0 ? Math.round(((projectedSpend - spendBudget) / spendBudget) * 100) : 0;
+  const forecastWaiting = !isPast && elapsed < 5 && spendBudget > 0;
 
   // Bills: Fixed Deduction + Investment categories, plus anything that repeats less often than monthly
   function hasEnded(endDate: string | null) {
@@ -283,10 +290,13 @@ export default async function DashboardPage({
                 {`${t.pct > 0 ? "▲" : "▼"} ${t.name}: ${fmt(t.spent, currency)}${isPast ? "" : " so far"} — ${Math.abs(t.pct)}% ${t.pct > 0 ? "above" : "below"} your ${history.monthCount}-month average (${fmt(Math.round(t.avg), currency)}).`}
               </div>
             ))}
-            {showProjection && (
+            {forecastReady && (
               <div className={`insight-line ${projDeltaPct > 0 ? "warn" : ""}`}>
-                {`🔮 At this pace, you're projected to spend ${fmt(projectedTotal, currency)} by the end of the cycle — ${projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your ${fmt(totalPlanAll, currency)} plan.`}
+                {`🔮 At this pace you'll spend about ${fmt(projectedSpend, currency)} by the end of the cycle — ${projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your ${fmt(spendBudget, currency)} budget (fixed bills counted in full).`}
               </div>
+            )}
+            {forecastWaiting && (
+              <div className="insight-line">🔮 The month-end forecast appears after day 5 of the cycle.</div>
             )}
           </div>
         </div>

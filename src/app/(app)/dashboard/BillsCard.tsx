@@ -175,7 +175,7 @@ export default function BillsCard({
           justifyContent: "space-between",
           alignItems: "center",
           gap: 8,
-          padding: "8px 0",
+          padding: "6px 0",
           borderBottom: "1px solid #f1f2f6",
         }}
       >
@@ -192,7 +192,7 @@ export default function BillsCard({
 
         {isPaid ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-            <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 13 }}>
+            <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 12 }}>
               ✓ Paid {fmt(local ? local.amount : b.paid, currency)}
             </span>
             {local && (
@@ -204,8 +204,8 @@ export default function BillsCard({
                   color: "#dc2626",
                   background: "white",
                   borderRadius: 6,
-                  padding: "3px 8px",
-                  fontSize: 11,
+                  padding: "2px 7px",
+                  fontSize: 10,
                   cursor: "pointer",
                 }}
               >
@@ -214,19 +214,19 @@ export default function BillsCard({
             )}
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
             <input
               type="number"
               inputMode="decimal"
               value={amounts[b.id] ?? String(rem)}
               onChange={(e) => setAmounts((a) => ({ ...a, [b.id]: e.target.value }))}
               style={{
-                width: 84,
+                width: 70,
                 boxSizing: "border-box",
                 border: "1px solid #d1d5db",
-                borderRadius: 8,
-                padding: "7px 6px",
-                fontSize: 16,
+                borderRadius: 6,
+                padding: "5px 6px",
+                fontSize: 13,
               }}
             />
             <button
@@ -237,9 +237,9 @@ export default function BillsCard({
                 background: "var(--accent, #6366f1)",
                 color: "white",
                 border: "none",
-                borderRadius: 8,
-                padding: "9px 12px",
-                fontSize: 13,
+                borderRadius: 6,
+                padding: "6px 10px",
+                fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
               }}
@@ -260,7 +260,7 @@ export default function BillsCard({
         justifyContent: "space-between",
         alignItems: "center",
         gap: 8,
-        padding: "8px 0",
+        padding: "6px 0",
         borderBottom: "1px solid #f1f2f6",
       }}
     >
