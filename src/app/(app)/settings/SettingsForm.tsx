@@ -15,6 +15,43 @@ const smallLabel: React.CSSProperties = {
   color: "var(--muted)",
 };
 
+const fieldLabel: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 12,
+  color: "var(--muted)",
+  flex: "1 1 140px",
+  minWidth: 0,
+};
+
+const ctl: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: "9px 10px",
+  fontSize: 16,
+  background: "white",
+  minWidth: 0,
+};
+
+const row: React.CSSProperties = { display: "flex", gap: 10, flexWrap: "wrap" };
+
+const bubble: React.CSSProperties = {
+  width: 38,
+  height: 38,
+  borderRadius: "50%",
+  border: "1px solid var(--border)",
+  background: "white",
+  fontSize: 14,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+};
+
 export default function SettingsForm({
   categories,
   income,
@@ -164,128 +201,164 @@ export default function SettingsForm({
                   <span>{isOpen ? "▲" : "▼"}</span>
                 </span>
               </button>
+
               {isOpen && (
-                <div className="cat-edit-row" style={{ borderBottom: "none", paddingTop: 0 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <button
-                      className="remove-btn"
-                      style={{ color: "var(--muted)" }}
-                      disabled={i === 0}
-                      onClick={() => move(c.id, "up", i)}
-                    >
-                      ▲
-                    </button>
-                    <button
-                      className="remove-btn"
-                      style={{ color: "var(--muted)" }}
-                      disabled={i === cats.length - 1}
-                      onClick={() => move(c.id, "down", i)}
-                    >
-                      ▼
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={c.name}
-                    onChange={(e) =>
-                      setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))
-                    }
-                  />
-                  <select
-                    value={c.type}
-                    onChange={(e) =>
-                      setCats((prev) =>
-                        prev.map((x, idx) => (idx === i ? { ...x, type: e.target.value as CategoryType } : x))
-                      )
-                    }
-                  >
-                    {CATEGORY_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    value={c.ideal_plan_amount || ""}
-                    onChange={(e) =>
-                      setCats((prev) =>
-                        prev.map((x, idx) =>
-                          idx === i ? { ...x, ideal_plan_amount: parseFloat(e.target.value) || 0 } : x
-                        )
-                      )
-                    }
-                  />
-                  <label style={smallLabel}>
-                    Repeats
-                    <select value={freq} onChange={(e) => changeFrequency(i, e.target.value as Frequency)}>
-                      {FREQUENCY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                <div
+                  style={{
+                    background: "#f9fafb",
+                    border: "1px solid var(--border)",
+                    borderRadius: 12,
+                    padding: 14,
+                    margin: "0 0 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
+                >
+                  <label style={fieldLabel}>
+                    Name
+                    <input
+                      type="text"
+                      value={c.name}
+                      style={ctl}
+                      onChange={(e) =>
+                        setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))
+                      }
+                    />
                   </label>
-                  {freq !== "monthly" && (
-                    <label style={smallLabel}>
-                      First due
+
+                  <div style={row}>
+                    <label style={fieldLabel}>
+                      Group
                       <select
-                        value={c.due_month ?? defaultDueMonth()}
+                        value={c.type}
+                        style={ctl}
                         onChange={(e) =>
                           setCats((prev) =>
-                            prev.map((x, idx) => (idx === i ? { ...x, due_month: e.target.value } : x))
+                            prev.map((x, idx) => (idx === i ? { ...x, type: e.target.value as CategoryType } : x))
                           )
                         }
                       >
-                        {dueMonthOptions(c.due_month).map((o) => (
+                        {CATEGORY_TYPES.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={fieldLabel}>
+                      Plan amount
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={c.ideal_plan_amount || ""}
+                        style={ctl}
+                        onChange={(e) =>
+                          setCats((prev) =>
+                            prev.map((x, idx) =>
+                              idx === i ? { ...x, ideal_plan_amount: parseFloat(e.target.value) || 0 } : x
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  <div style={row}>
+                    <label style={fieldLabel}>
+                      Repeats
+                      <select
+                        value={freq}
+                        style={ctl}
+                        onChange={(e) => changeFrequency(i, e.target.value as Frequency)}
+                      >
+                        {FREQUENCY_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>
                         ))}
                       </select>
                     </label>
-                  )}
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={c.end_date !== null}
-                      onChange={(e) =>
-                        setCats((prev) =>
-                          prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.checked ? "" : null } : x))
-                        )
-                      }
-                    />
-                    End date
-                  </label>
-                  {c.end_date !== null && (
-                    <input
-                      type="date"
-                      value={c.end_date ?? ""}
-                      onChange={(e) =>
-                        setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.value } : x)))
-                      }
-                    />
-                  )}
-                  <button
-                    className="btn btn-secondary"
-                    style={{ width: "auto", padding: "6px 12px" }}
-                    onClick={() => saveCategory(c)}
-                    disabled={isPending}
-                  >
-                    Save
-                  </button>
-                  <button className="remove-btn" onClick={() => removeCategory(c.id)}>
-                    remove
-                  </button>
+                    {freq !== "monthly" && (
+                      <label style={fieldLabel}>
+                        First due
+                        <select
+                          value={c.due_month ?? defaultDueMonth()}
+                          style={ctl}
+                          onChange={(e) =>
+                            setCats((prev) =>
+                              prev.map((x, idx) => (idx === i ? { ...x, due_month: e.target.value } : x))
+                            )
+                          }
+                        >
+                          {dueMonthOptions(c.due_month).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={c.end_date !== null}
+                        onChange={(e) =>
+                          setCats((prev) =>
+                            prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.checked ? "" : null } : x))
+                          )
+                        }
+                      />
+                      End date
+                    </label>
+                    {c.end_date !== null && (
+                      <input
+                        type="date"
+                        value={c.end_date ?? ""}
+                        style={{ ...ctl, width: "auto" }}
+                        onChange={(e) =>
+                          setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.value } : x)))
+                        }
+                      />
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ width: "auto", padding: "8px 16px" }}
+                      onClick={() => saveCategory(c)}
+                      disabled={isPending}
+                    >
+                      Save
+                    </button>
+                    <button className="remove-btn" onClick={() => removeCategory(c.id)}>
+                      remove
+                    </button>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        aria-label="Move up"
+                        style={{ ...bubble, opacity: i === 0 ? 0.35 : 1 }}
+                        disabled={i === 0}
+                        onClick={() => move(c.id, "up", i)}
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move down"
+                        style={{ ...bubble, opacity: i === cats.length - 1 ? 0.35 : 1 }}
+                        disabled={i === cats.length - 1}
+                        onClick={() => move(c.id, "down", i)}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
