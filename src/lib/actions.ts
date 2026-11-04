@@ -265,3 +265,20 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export async function updateCategoryBudget(id: string, amount: number) {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!Number.isFinite(amount) || amount < 0) return { ok: false };
+  const { error } = await supabase
+    .from("categories")
+    .update({ ideal_plan_amount: Math.round(amount) })
+    .eq("id", id)
+    .eq("user_id", user!.id);
+  revalidatePath("/planned");
+  revalidatePath("/dashboard");
+  revalidatePath("/settings");
+  revalidatePath("/log");
+  return { ok: !error };
+}
