@@ -1,5 +1,3 @@
-import SupportBar from "./SupportBar";
-
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
@@ -9,6 +7,7 @@ import { getMyProfile } from "@/lib/actions";
 import CycleSwitcher from "./CycleSwitcher";
 import ProfileMenu, { shownName } from "./ProfileMenu";
 import type { MyProfile } from "./ProfileMenu";
+import SupportBar from "./SupportBar";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
@@ -31,7 +30,9 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
     <>
       <div className="topbar">
         <div>
-          <div className="logo"><span className="mark">₹</span> Track Kar</div>
+          <div className="logo">
+            <span className="mark">₹</span> Track Kar
+          </div>
           {first && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>Hi {first}!</div>}
         </div>
         <div className="topbar-right">
@@ -47,7 +48,7 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
           alignItems: "stretch",
           background: "white",
           borderBottom: "1px solid #e5e7eb",
-          margin: "0 0 12px",
+          margin: "0 0 8px",
           padding: "0 4px",
         }}
       >
@@ -80,6 +81,8 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
           );
         })}
       </nav>
+
+      <SupportBar />
     </>
   );
 }
