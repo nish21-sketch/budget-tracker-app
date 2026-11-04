@@ -3,6 +3,7 @@ import { getCurrentUser, getProfile, getCategories } from "@/lib/data";
 import { firstOfMonth, monthLabel } from "@/lib/utils";
 import NavBar from "@/components/NavBar";
 import QuickLogButton from "@/components/QuickLogButton";
+import SupportBar from "@/components/SupportBar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -18,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="app">
       <NavBar monthLabel={monthLabel(firstOfMonth())} initial={initial} />
       {children}
+      <SupportBar />
       <QuickLogButton categories={categories} currency={profile?.currency ?? "₹"} />
     </div>
   );

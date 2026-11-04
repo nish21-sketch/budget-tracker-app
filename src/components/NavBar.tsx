@@ -7,7 +7,6 @@ import { getMyProfile } from "@/lib/actions";
 import CycleSwitcher from "./CycleSwitcher";
 import ProfileMenu, { shownName } from "./ProfileMenu";
 import type { MyProfile } from "./ProfileMenu";
-import SupportBar from "./SupportBar";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
@@ -48,7 +47,7 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
           alignItems: "stretch",
           background: "white",
           borderBottom: "1px solid #e5e7eb",
-          margin: "0 0 8px",
+          margin: "0 0 12px",
           padding: "0 4px",
         }}
       >
@@ -75,14 +74,12 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
                   borderBottom: active ? "2px solid var(--accent, #6366f1)" : "2px solid transparent",
                 }}
               >
-                {l.label}
+                {links.length && l.label}
               </Link>
             </Fragment>
           );
         })}
       </nav>
-
-      <SupportBar />
     </>
   );
 }

@@ -37,6 +37,7 @@ function SupportModal({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
+      data-support-modal
       onClick={onClose}
       style={{
         position: "fixed",
