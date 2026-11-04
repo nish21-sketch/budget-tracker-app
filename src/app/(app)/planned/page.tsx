@@ -1,22 +1,34 @@
 import Link from "next/link";
-import { getCategories, getSoFarByCategory, getIncome, getProfile, getMonthlySpendTotals, getActiveCycle } from "@/lib/data";
+import {
+  getCategories,
+  getSoFarByCategory,
+  getIncome,
+  getProfile,
+  getMonthlySpendTotals,
+  getActiveCycle,
+  getCategoryMonthTotals,
+} from "@/lib/data";
 import { addMonths, fmt, toDateInputValue } from "@/lib/utils";
 import PlannedTable from "./PlannedTable";
 
-const FORECAST_MONTHS = 12;
+const PAST_MONTHS = 2;
+const FUTURE_MONTHS = 12;
 
 export default async function PlannedPage() {
   const now = await getActiveCycle();
-  const [categories, soFarMap, income, profile, monthTotals] = await Promise.all([
+  const [categories, soFarMap, income, profile, monthTotals, actuals] = await Promise.all([
     getCategories(),
     getSoFarByCategory(now),
     getIncome(),
     getProfile(),
     getMonthlySpendTotals(),
+    getCategoryMonthTotals(addMonths(now, -PAST_MONTHS), now),
   ]);
   const currency = profile?.currency ?? "₹";
   const cats = categories.map((c) => ({ ...c, soFar: soFarMap[c.id] ?? 0 }));
-  const months = Array.from({ length: FORECAST_MONTHS }, (_, i) => addMonths(now, i));
+  const months = Array.from({ length: PAST_MONTHS + 1 + FUTURE_MONTHS }, (_, i) =>
+    addMonths(now, i - PAST_MONTHS)
+  );
   const monthsIso = months.map((m) => m.toISOString());
 
   const currentKey = toDateInputValue(now);
@@ -53,12 +65,20 @@ export default async function PlannedPage() {
       </div>
 
       <div className="legend-row">
+        <span><span className="legend-dot" style={{ background: "#e5e7eb" }} /> Past months (what you spent)</span>
         <span><span className="legend-dot" style={{ background: "var(--accent-soft)", border: "1px solid var(--accent)" }} /> Current cycle (actual so far)</span>
         <span><span className="legend-dot" style={{ background: "var(--red-soft)", border: "1px solid var(--red)" }} /> Over plan</span>
         <span><span className="legend-dot" style={{ background: "#f1f2f6" }} /> {currency}0 — not due this month / ended</span>
       </div>
 
-      <PlannedTable cats={cats} monthsIso={monthsIso} income={income} currency={currency} />
+      <PlannedTable
+        cats={cats}
+        monthsIso={monthsIso}
+        currentIndex={PAST_MONTHS}
+        actuals={actuals}
+        income={income}
+        currency={currency}
+      />
     </div>
   );
 }

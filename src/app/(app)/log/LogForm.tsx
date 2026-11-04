@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { logTransaction, deleteTransaction } from "@/lib/actions";
 import { fmt } from "@/lib/utils";
 import type { Category } from "@/lib/data";
@@ -12,6 +12,7 @@ type RecentRow = {
   amount: number;
   note: string | null;
   logged_at: string;
+  month: string;
   category_id: string;
   categories: { name: string } | { name: string }[] | null;
 };
@@ -19,6 +20,13 @@ type RecentRow = {
 function catNameFromRow(row: RecentRow): string {
   if (!row.categories) return "—";
   return Array.isArray(row.categories) ? (row.categories[0]?.name ?? "—") : row.categories.name;
+}
+
+function stamp(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${date} · ${time}`;
 }
 
 const PAGE_SIZE = 10;
@@ -50,6 +58,12 @@ export default function LogForm({
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Dates are formatted in your own time zone, so wait until the page is on your device
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   function submitFor(cat: CategoryWithSoFar) {
     const amt = parseFloat(inputs[cat.id] ?? "");
@@ -64,7 +78,15 @@ export default function LogForm({
       const inserted = await logTransaction(cat.id, amt, note);
       if (inserted) {
         setRecent((prev) => [
-          { id: inserted.id, amount: inserted.amount, note: inserted.note, logged_at: inserted.logged_at, category_id: cat.id, categories: { name: cat.name } },
+          {
+            id: inserted.id,
+            amount: inserted.amount,
+            note: inserted.note,
+            logged_at: inserted.logged_at,
+            month: inserted.month,
+            category_id: cat.id,
+            categories: { name: cat.name },
+          },
           ...prev,
         ]);
       }
@@ -170,9 +192,9 @@ export default function LogForm({
       </div>
 
       <div className="recent-box">
-        <h4>Recent logs</h4>
+        <h4>Logs this cycle</h4>
         {visibleRecent.length === 0 ? (
-          <div style={{ color: "#9ca3af", fontSize: 13 }}>Nothing logged yet.</div>
+          <div style={{ color: "#9ca3af", fontSize: 13 }}>Nothing logged yet this cycle.</div>
         ) : (
           <>
             {visibleRecent.map((r) => (
@@ -184,7 +206,9 @@ export default function LogForm({
                 <span>
                   {catNameFromRow(r)} — {fmt(Number(r.amount), currency)}
                   {r.note ? <span style={{ color: "#9ca3af" }}> · {r.note}</span> : null}
-                  <span style={{ color: "#9ca3af" }}> · {new Date(r.logged_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ color: "#9ca3af", display: "block", fontSize: 11 }}>
+                    {mounted ? stamp(r.logged_at) : ""}
+                  </span>
                 </span>
                 <button
                   type="button"

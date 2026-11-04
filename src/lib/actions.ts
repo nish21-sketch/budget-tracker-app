@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, getActiveCycle } from "@/lib/data";
+import { getCurrentUser, getActiveCycle, getActiveCycleStartFresh, getProfile } from "@/lib/data";
 import { firstOfMonth, addMonths, monthLabel, toDateInputValue } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -50,6 +50,38 @@ export async function completeOnboarding(
   redirect("/dashboard");
 }
 
+export async function getMyProfile() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const profile = (await getProfile()) as { display_name?: string | null; avatar_url?: string | null } | null;
+  return {
+    userId: user.id,
+    email: user.email ?? "",
+    displayName: profile?.display_name ?? null,
+    avatarUrl: profile?.avatar_url ?? null,
+  };
+}
+
+export async function updateDisplayName(name: string) {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const clean = name.trim().slice(0, 40);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ display_name: clean || null })
+    .eq("id", user!.id);
+  return { ok: !error };
+}
+
+export async function saveAvatarUrl(url: string | null) {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", user!.id);
+  return { ok: !error };
+}
+
 export async function getCycleInfo() {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -83,7 +115,7 @@ export async function startNextCycle() {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const active = await getActiveCycle();
+  const active = (await getActiveCycleStartFresh()).cycle;
   const next = addMonths(active, 1);
   if (next > addMonths(firstOfMonth(), 1)) return;
   await supabase.from("profiles").update({ current_cycle: toDateInputValue(next) }).eq("id", user!.id);
@@ -96,7 +128,7 @@ export async function undoEarlyCycle() {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const active = await getActiveCycle();
+  const active = (await getActiveCycleStartFresh()).cycle;
   if (active <= firstOfMonth()) return;
   await supabase.from("profiles").update({ current_cycle: null }).eq("id", user!.id);
   await supabase.from("profiles").update({ cycle_started_on: null }).eq("id", user!.id);
@@ -117,7 +149,7 @@ export async function logTransaction(categoryId: string, amount: number, note?: 
       note: note || null,
       month: toDateInputValue(cycle),
     })
-    .select("id, amount, note, logged_at, category_id")
+    .select("id, amount, note, logged_at, month, category_id")
     .single();
   revalidatePath("/log");
   revalidatePath("/dashboard");

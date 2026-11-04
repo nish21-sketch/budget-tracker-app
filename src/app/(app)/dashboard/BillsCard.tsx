@@ -33,6 +33,16 @@ const arrowBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const linkBtn: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "var(--accent, #6366f1)",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+  padding: 0,
+};
+
 function Pager({ items, size = 3 }: { items: React.ReactNode[]; size?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
@@ -118,6 +128,8 @@ export default function BillsCard({
   const [done, setDone] = useState<Record<string, { txId: string; amount: number }>>({});
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [lastPaidId, setLastPaidId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
 
   function remainingOf(b: BillRow) {
@@ -125,6 +137,7 @@ export default function BillsCard({
   }
 
   const stillToPay = bills.reduce((s, b) => s + (done[b.id] ? 0 : remainingOf(b)), 0);
+  const allPaid = bills.length > 0 && stillToPay === 0;
 
   // Unpaid bills first (based on saved data, so rows don't jump while you tap)
   const sortedBills = [...bills].sort(
@@ -140,6 +153,7 @@ export default function BillsCard({
       const tx = await logTransaction(b.id, amt, "Marked as paid");
       if (tx) {
         setDone((d) => ({ ...d, [b.id]: { txId: tx.id, amount: amt } }));
+        setLastPaidId(b.id);
         setAmounts((a) => {
           const n = { ...a };
           delete n[b.id];
@@ -161,6 +175,34 @@ export default function BillsCard({
     startTransition(async () => {
       await deleteTransaction(d.txId);
     });
+  }
+
+  if (allPaid && !expanded) {
+    return (
+      <div
+        className="card"
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "12px 14px",
+        }}
+      >
+        <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 14 }}>✓ All fixed dues paid</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {lastPaidId && done[lastPaidId] && (
+            <button type="button" onClick={() => undo(lastPaidId)} style={{ ...linkBtn, color: "#dc2626" }}>
+              Undo
+            </button>
+          )}
+          <button type="button" onClick={() => setExpanded(true)} style={linkBtn}>
+            Show
+          </button>
+        </span>
+      </div>
+    );
   }
 
   const billItems = sortedBills.map((b) => {
@@ -291,6 +333,11 @@ export default function BillsCard({
             <div style={{ fontSize: 16, fontWeight: 800, color: stillToPay > 0 ? "#111827" : "#16a34a" }}>
               {stillToPay > 0 ? fmt(stillToPay, currency) : "All paid ✓"}
             </div>
+            {allPaid && (
+              <button type="button" onClick={() => setExpanded(false)} style={linkBtn}>
+                Hide
+              </button>
+            )}
           </div>
         )}
       </div>

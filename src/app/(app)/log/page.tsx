@@ -1,12 +1,13 @@
-import { getCategories, getSoFarByCategory, getProfile, getRecentTransactions } from "@/lib/data";
+import { getCategories, getSoFarByCategory, getProfile, getRecentTransactions, getActiveCycle } from "@/lib/data";
 import LogForm from "./LogForm";
 
 export default async function LogPage() {
+  const cycle = await getActiveCycle();
   const [categories, soFarMap, profile, recent] = await Promise.all([
     getCategories(),
-    getSoFarByCategory(),
+    getSoFarByCategory(cycle),
     getProfile(),
-    getRecentTransactions(50),
+    getRecentTransactions(100, cycle),
   ]);
   const cats = categories.map((c) => ({ ...c, soFar: soFarMap[c.id] ?? 0 }));
   return <LogForm categories={cats} currency={profile?.currency ?? "₹"} initialRecent={recent} />;

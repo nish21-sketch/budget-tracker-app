@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { firstOfMonth, toDateInputValue } from "@/lib/utils";
 
@@ -12,13 +13,14 @@ export type Category = {
   due_month?: string | null;
 };
 
-export async function getCurrentUser() {
+// Cached: asked once per page load instead of once per query
+export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   return data.user;
-}
+});
 
-export async function getProfile() {
+async function loadProfile() {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
@@ -26,14 +28,13 @@ export async function getProfile() {
   return data;
 }
 
-// The cycle the user is in, and the day it actually began.
-// Normally the calendar month, starting on the 1st. If the user started the next cycle early,
-// the cycle is that month and it began on the day they tapped Start.
-export async function getActiveCycleStart(): Promise<{ cycle: Date; start: Date }> {
+export const getProfile = cache(loadProfile);
+
+type CycleProfile = { current_cycle?: string | null; cycle_started_on?: string | null } | null;
+
+function computeActiveCycleStart(profileRaw: unknown): { cycle: Date; start: Date } {
   const calendar = firstOfMonth();
-  const profile = (await getProfile()) as
-    | { current_cycle?: string | null; cycle_started_on?: string | null }
-    | null;
+  const profile = profileRaw as CycleProfile;
   const raw = profile?.current_cycle;
   if (!raw) return { cycle: calendar, start: calendar };
   const [y, m] = raw.split("-").map(Number);
@@ -49,11 +50,19 @@ export async function getActiveCycleStart(): Promise<{ cycle: Date; start: Date 
   return { cycle: stored, start };
 }
 
+// The cycle the user is in, and the day it actually began.
+export const getActiveCycleStart = cache(async () => computeActiveCycleStart(await getProfile()));
+
+// Same thing, but always reads fresh (used right before changing the cycle)
+export async function getActiveCycleStartFresh() {
+  return computeActiveCycleStart(await loadProfile());
+}
+
 export async function getActiveCycle(): Promise<Date> {
   return (await getActiveCycleStart()).cycle;
 }
 
-export async function getIncome() {
+export const getIncome = cache(async () => {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return 0;
@@ -63,9 +72,9 @@ export async function getIncome() {
     .eq("user_id", user.id)
     .single();
   return data?.monthly_amount ?? 0;
-}
+});
 
-export async function getCategories(): Promise<Category[]> {
+export const getCategories = cache(async (): Promise<Category[]> => {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
@@ -75,7 +84,7 @@ export async function getCategories(): Promise<Category[]> {
     .eq("user_id", user.id)
     .order("sort_order");
   return data ?? [];
-}
+});
 
 // Sum of transactions per category for a cycle (defaults to the active cycle)
 export async function getSoFarByCategory(month?: Date): Promise<Record<string, number>> {
@@ -119,6 +128,29 @@ export async function getCategoryHistory(
   return { totals, monthCount: months.size };
 }
 
+// Spend per category for each cycle in [from, toExclusive): { "2026-09-01": { categoryId: amount } }
+export async function getCategoryMonthTotals(
+  from: Date,
+  toExclusive: Date
+): Promise<Record<string, Record<string, number>>> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return {};
+  const { data } = await supabase
+    .from("transactions")
+    .select("category_id, amount, month")
+    .eq("user_id", user.id)
+    .gte("month", toDateInputValue(from))
+    .lt("month", toDateInputValue(toExclusive));
+  const out: Record<string, Record<string, number>> = {};
+  (data ?? []).forEach((row) => {
+    const key = String(row.month);
+    if (!out[key]) out[key] = {};
+    out[key][row.category_id] = (out[key][row.category_id] ?? 0) + Number(row.amount);
+  });
+  return out;
+}
+
 // Total non-Investment spend per cycle, keyed by first-of-month date (YYYY-MM-DD)
 export async function getMonthlySpendTotals(): Promise<Record<string, number>> {
   const supabase = await createClient();
@@ -151,15 +183,16 @@ export async function getAllTransactions() {
   return data ?? [];
 }
 
-export async function getRecentTransactions(limit = 10) {
+// Latest logs, newest first. Pass a cycle to get only that cycle's logs.
+export async function getRecentTransactions(limit = 10, cycle?: Date) {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data } = await supabase
+  let q = supabase
     .from("transactions")
-    .select("id, amount, note, logged_at, category_id, categories(name)")
-    .eq("user_id", user.id)
-    .order("logged_at", { ascending: false })
-    .limit(limit);
+    .select("id, amount, note, logged_at, month, category_id, categories(name)")
+    .eq("user_id", user.id);
+  if (cycle) q = q.eq("month", toDateInputValue(cycle));
+  const { data } = await q.order("logged_at", { ascending: false }).limit(limit);
   return data ?? [];
 }
