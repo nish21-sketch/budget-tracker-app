@@ -32,7 +32,11 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
           <div className="logo">
             <span className="mark">₹</span> Track Kar
           </div>
-          {first && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>Hi {first}!</div>}
+          {first && (
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#111827", marginTop: 3 }}>
+              Hi {first}!
+            </div>
+          )}
         </div>
         <div className="topbar-right">
           <CycleSwitcher fallbackLabel={monthLabel} />
@@ -74,7 +78,7 @@ export default function NavBar({ monthLabel, initial }: { monthLabel: string; in
                   borderBottom: active ? "2px solid var(--accent, #6366f1)" : "2px solid transparent",
                 }}
               >
-                {links.length && l.label}
+                {l.label}
               </Link>
             </Fragment>
           );

@@ -5,7 +5,13 @@ import { updateIncome, upsertCategory, deleteCategory, moveCategory } from "@/li
 import { CATEGORY_TYPES, CategoryType } from "@/lib/categories";
 import { fmt } from "@/lib/utils";
 import type { Category } from "@/lib/data";
-import { FREQUENCY_OPTIONS, Frequency, dueMonthOptions, defaultDueMonth, frequencyTag } from "@/lib/frequency";
+import {
+  FREQUENCY_OPTIONS,
+  Frequency,
+  dueMonthOptions,
+  defaultDueMonth,
+  frequencyTag,
+} from "@/lib/frequency";
 
 const smallLabel: React.CSSProperties = {
   display: "flex",
@@ -24,6 +30,9 @@ const fieldLabel: React.CSSProperties = {
   flex: "1 1 140px",
   minWidth: 0,
 };
+
+// Same look, but never reserves extra height when stacked in a column
+const fullLabel: React.CSSProperties = { ...fieldLabel, flex: "0 0 auto" };
 
 const ctl: React.CSSProperties = {
   width: "100%",
@@ -174,6 +183,7 @@ export default function SettingsForm({
         <h3>
           Categories <span className="sub">Tap a category to see or change its details.</span>
         </h3>
+
         {cats.map((c, i) => {
           const isOpen = expandedId === c.id;
           const tag = frequencyTag(c.frequency);
@@ -215,7 +225,7 @@ export default function SettingsForm({
                     gap: 12,
                   }}
                 >
-                  <label style={fieldLabel}>
+                  <label style={fullLabel}>
                     Name
                     <input
                       type="text"
@@ -320,7 +330,9 @@ export default function SettingsForm({
                         value={c.end_date ?? ""}
                         style={{ ...ctl, width: "auto" }}
                         onChange={(e) =>
-                          setCats((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.value } : x)))
+                          setCats((prev) =>
+                            prev.map((x, idx) => (idx === i ? { ...x, end_date: e.target.value } : x))
+                          )
                         }
                       />
                     )}

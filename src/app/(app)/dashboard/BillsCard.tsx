@@ -33,16 +33,6 @@ const arrowBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const linkBtn: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "var(--accent, #6366f1)",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-  padding: 0,
-};
-
 function Pager({ items, size = 3 }: { items: React.ReactNode[]; size?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
@@ -55,7 +45,6 @@ function Pager({ items, size = 3 }: { items: React.ReactNode[]; size?: number })
     if (!el || el.clientWidth === 0) return;
     setPage(Math.round(el.scrollLeft / el.clientWidth));
   }
-
   function go(p: number) {
     const el = ref.current;
     if (!el) return;
@@ -82,10 +71,15 @@ function Pager({ items, size = 3 }: { items: React.ReactNode[]; size?: number })
           </div>
         ))}
       </div>
-
       {pages.length > 1 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8 }}>
-          <button type="button" aria-label="Previous" onClick={() => go(Math.max(0, page - 1))} disabled={page === 0} style={{ ...arrowBtn, opacity: page === 0 ? 0.4 : 1 }}>
+          <button
+            type="button"
+            aria-label="Previous"
+            onClick={() => go(Math.max(0, page - 1))}
+            disabled={page === 0}
+            style={{ ...arrowBtn, opacity: page === 0 ? 0.4 : 1 }}
+          >
             ‹
           </button>
           <div style={{ display: "flex", gap: 6 }}>
@@ -128,8 +122,7 @@ export default function BillsCard({
   const [done, setDone] = useState<Record<string, { txId: string; amount: number }>>({});
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [lastPaidId, setLastPaidId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   function remainingOf(b: BillRow) {
@@ -153,7 +146,6 @@ export default function BillsCard({
       const tx = await logTransaction(b.id, amt, "Marked as paid");
       if (tx) {
         setDone((d) => ({ ...d, [b.id]: { txId: tx.id, amount: amt } }));
-        setLastPaidId(b.id);
         setAmounts((a) => {
           const n = { ...a };
           delete n[b.id];
@@ -175,34 +167,6 @@ export default function BillsCard({
     startTransition(async () => {
       await deleteTransaction(d.txId);
     });
-  }
-
-  if (allPaid && !expanded) {
-    return (
-      <div
-        className="card"
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          padding: "12px 14px",
-        }}
-      >
-        <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 14 }}>✓ All fixed dues paid</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {lastPaidId && done[lastPaidId] && (
-            <button type="button" onClick={() => undo(lastPaidId)} style={{ ...linkBtn, color: "#dc2626" }}>
-              Undo
-            </button>
-          )}
-          <button type="button" onClick={() => setExpanded(true)} style={linkBtn}>
-            Show
-          </button>
-        </span>
-      </div>
-    );
   }
 
   const billItems = sortedBills.map((b) => {
@@ -231,7 +195,6 @@ export default function BillsCard({
               : `Planned ${fmt(b.plan, currency)}`}
           </div>
         </div>
-
         {isPaid ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
             <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 12 }}>
@@ -320,35 +283,62 @@ export default function BillsCard({
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
-        <div>
-          <h3 style={{ margin: 0 }}>Bills &amp; Investments</h3>
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Tap Paid when you&apos;ve paid one</div>
-        </div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            style={{
+              display: "inline-block",
+              width: 14,
+              color: "#6b7280",
+              transition: "transform 0.15s",
+              transform: open ? "rotate(90deg)" : "rotate(0deg)",
+            }}
+          >
+            ›
+          </span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>One Tap Pay</span>
+        </span>
         {bills.length > 0 && (
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#9ca3af" }}>
+          <span style={{ textAlign: "right", flexShrink: 0 }}>
+            <span style={{ display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#9ca3af" }}>
               To pay this cycle
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: stillToPay > 0 ? "#111827" : "#16a34a" }}>
-              {stillToPay > 0 ? fmt(stillToPay, currency) : "All paid ✓"}
-            </div>
-            {allPaid && (
-              <button type="button" onClick={() => setExpanded(false)} style={linkBtn}>
-                Hide
-              </button>
-            )}
-          </div>
+            </span>
+            <span style={{ display: "block", fontSize: 16, fontWeight: 800, color: stillToPay > 0 ? "#111827" : "#16a34a" }}>
+              {allPaid ? "All paid ✓" : fmt(stillToPay, currency)}
+            </span>
+          </span>
         )}
-      </div>
+      </button>
 
-      {billItems.length > 0 && <Pager items={billItems} size={3} />}
-
-      {upcomingItems.length > 0 && (
-        <>
-          <div style={sectionTitle}>Coming up</div>
-          <Pager items={upcomingItems} size={3} />
-        </>
+      {open && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>
+            Tap Paid when you&apos;ve paid one
+          </div>
+          {billItems.length > 0 && <Pager items={billItems} size={3} />}
+          {upcomingItems.length > 0 && (
+            <>
+              <div style={sectionTitle}>Coming up</div>
+              <Pager items={upcomingItems} size={3} />
+            </>
+          )}
+        </div>
       )}
     </div>
   );

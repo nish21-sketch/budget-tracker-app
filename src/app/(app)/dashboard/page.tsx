@@ -42,7 +42,9 @@ export default async function DashboardPage({
     getSoFarByCategory(prevMonth),
     getCategoryHistory(addMonths(now, -3), now),
   ]);
+
   const currency = profile?.currency ?? "₹";
+
   const cats = categories.map((c) => ({
     ...c,
     ideal_plan_amount: isDueInMonth(c.frequency, c.due_month, now) ? Number(c.ideal_plan_amount) : 0,
@@ -52,8 +54,10 @@ export default async function DashboardPage({
   const totalExpense = cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + c.soFar, 0);
   const totalInvestment = cats.filter((c) => c.type === "Investment").reduce((s, c) => s + c.soFar, 0);
   const cashInHand = income - totalExpense - totalInvestment;
-  const spendBudget = cats.filter((c) => c.type !== "Investment").reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
 
+  const spendBudget = cats
+    .filter((c) => c.type !== "Investment")
+    .reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
   const budgetSpentWithinPlan = Math.min(totalExpense, spendBudget);
   const budgetOverAmount = Math.max(0, totalExpense - spendBudget);
   const budgetRemaining = Math.max(0, spendBudget - totalExpense);
@@ -69,7 +73,10 @@ export default async function DashboardPage({
   const today = new Date();
   const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dim = daysInMonth(now);
-  const elapsed = Math.min(dim, Math.max(0, Math.floor((todayMid.getTime() - cycleStart.getTime()) / 86400000) + 1));
+  const elapsed = Math.min(
+    dim,
+    Math.max(0, Math.floor((todayMid.getTime() - cycleStart.getTime()) / 86400000) + 1)
+  );
   const timePct = Math.round((elapsed / dim) * 100);
 
   const totalPlanAll = cats.reduce((s, c) => s + Number(c.ideal_plan_amount), 0);
@@ -77,10 +84,12 @@ export default async function DashboardPage({
   const spendPct = totalPlanAll > 0 ? Math.round((totalSpentAll / totalPlanAll) * 100) : 0;
   const paceDelta = spendPct - timePct;
 
-  const overspendCat = cats.find((c) => c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0);
-
+  const overspendCat = cats.find(
+    (c) => c.soFar > Number(c.ideal_plan_amount) && Number(c.ideal_plan_amount) > 0
+  );
   const prevTotalSpent = cats.reduce((s, c) => s + (prevSoFarMap[c.id] ?? 0), 0);
-  const trendPct = prevTotalSpent > 0 ? Math.round(((totalSpentAll - prevTotalSpent) / prevTotalSpent) * 100) : null;
+  const trendPct =
+    prevTotalSpent > 0 ? Math.round(((totalSpentAll - prevTotalSpent) / prevTotalSpent) * 100) : null;
 
   // Safe to spend: flexible budgets (Fluid Essential + Personal) left, spread over the days left
   const flexTypes: string[] = ["Fluid Essential", "Personal"];
@@ -100,7 +109,8 @@ export default async function DashboardPage({
   const forecastReady = !isPast && elapsed >= 5 && spendBudget > 0;
   const projectedSpend =
     Math.max(fixedSpent, fixedPlan) + (elapsed > 0 ? Math.round((flexSpent / elapsed) * dim) : 0);
-  const projDeltaPct = spendBudget > 0 ? Math.round(((projectedSpend - spendBudget) / spendBudget) * 100) : 0;
+  const projDeltaPct =
+    spendBudget > 0 ? Math.round(((projectedSpend - spendBudget) / spendBudget) * 100) : 0;
   const forecastWaiting = !isPast && elapsed < 5 && spendBudget > 0;
 
   // Bills: Fixed Deduction + Investment categories, plus anything that repeats less often than monthly
@@ -195,7 +205,6 @@ export default async function DashboardPage({
           <div className="label">Monthly Income</div>
           <div className="value">{fmt(income, currency)}</div>
         </div>
-
         <div className="card kpi-card">
           <div className="label">Budget vs Spend</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginTop: 2 }}>
@@ -206,13 +215,24 @@ export default async function DashboardPage({
           </div>
           <div className="bar-track bar-stacked" style={{ height: 8, marginTop: 8 }}>
             <div className="bar-seg" style={{ width: `${budgetBluePct}%`, background: "#3b82f6" }} />
-            {isOverBudget && <div className="bar-seg" style={{ width: `${budgetRedPct}%`, background: "#dc2626" }} />}
-            {!isOverBudget && budgetRemaining > 0 && <div className="bar-seg" style={{ width: `${budgetGreyPct}%`, background: "#e5e7eb" }} />}
+            {isOverBudget && (
+              <div className="bar-seg" style={{ width: `${budgetRedPct}%`, background: "#dc2626" }} />
+            )}
+            {!isOverBudget && budgetRemaining > 0 && (
+              <div className="bar-seg" style={{ width: `${budgetGreyPct}%`, background: "#e5e7eb" }} />
+            )}
           </div>
         </div>
-
-        <div className="card kpi-card"><div className="label">Investment (so far)</div><div className="value">{fmt(totalInvestment, currency)}</div></div>
-        <div className="card kpi-card"><div className="label">Cash in Hand</div><div className="value" style={{ color: cashInHand < 0 ? "#dc2626" : "#16a34a" }}>{fmt(cashInHand, currency)}</div></div>
+        <div className="card kpi-card">
+          <div className="label">Investment</div>
+          <div className="value">{fmt(totalInvestment, currency)}</div>
+        </div>
+        <div className="card kpi-card">
+          <div className="label">Cash in Hand</div>
+          <div className="value" style={{ color: cashInHand < 0 ? "#dc2626" : "#16a34a" }}>
+            {fmt(cashInHand, currency)}
+          </div>
+        </div>
       </div>
 
       {showSafe && (
@@ -245,7 +265,12 @@ export default async function DashboardPage({
       )}
 
       {showBills && (
-        <BillsCard key={now.toISOString()} bills={billsToPay} upcoming={upcomingBills} currency={currency} />
+        <BillsCard
+          key={now.toISOString()}
+          bills={billsToPay}
+          upcoming={upcomingBills}
+          currency={currency}
+        />
       )}
 
       {cats.length === 0 && (
@@ -256,14 +281,32 @@ export default async function DashboardPage({
 
       <div className="grid-2">
         <div className="card">
-          <h3>Budget Pace <span className="sub">Are you spending faster than the cycle is passing?</span></h3>
+          <h3>
+            Budget Pace <span className="sub">Are you spending faster than the cycle is passing?</span>
+          </h3>
           <div className="goal-block">
             <div className="goal-label">{`Cycle elapsed${elapsed > 0 ? ` · day ${elapsed} of ${dim}` : ""}`}</div>
-            <div className="progress-track"><div className="progress-fill" style={{ width: `${timePct}%`, background: "linear-gradient(90deg,#a5b4fc,#6366f1)" }} /></div>
+            <div className="progress-track">
+              <div
+                className="progress-fill"
+                style={{ width: `${timePct}%`, background: "linear-gradient(90deg,#a5b4fc,#6366f1)" }}
+              />
+            </div>
           </div>
           <div className="goal-block">
             <div className="goal-label">Budget spent</div>
-            <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.min(spendPct, 100)}%`, background: paceDelta > 15 ? "linear-gradient(90deg,#fca5a5,#dc2626)" : "linear-gradient(90deg,#6ee7b7,#16a34a)" }} /></div>
+            <div className="progress-track">
+              <div
+                className="progress-fill"
+                style={{
+                  width: `${Math.min(spendPct, 100)}%`,
+                  background:
+                    paceDelta > 15
+                      ? "linear-gradient(90deg,#fca5a5,#dc2626)"
+                      : "linear-gradient(90deg,#6ee7b7,#16a34a)",
+                }}
+              />
+            </div>
           </div>
           <div className={`insight-line ${paceDelta > 15 ? "warn" : ""}`} style={{ marginTop: 4 }}>
             {paceDelta > 15
@@ -282,7 +325,11 @@ export default async function DashboardPage({
             )}
             {trendPct !== null && (
               <div className={`insight-line ${trendPct > 15 ? "warn" : ""}`}>
-                {`${trendPct >= 0 ? "📈" : "📉"} ${isPast ? `You spent ${fmt(totalSpentAll, currency)} in ${monthLabel(viewing)}` : `You've spent ${fmt(totalSpentAll, currency)} so far this cycle`} — ${Math.abs(trendPct)}% ${trendPct >= 0 ? "more" : "less"} than you spent in ${monthLabel(prevMonth)} (${fmt(prevTotalSpent, currency)}).`}
+                {`${trendPct >= 0 ? "📈" : "📉"} ${
+                  isPast
+                    ? `You spent ${fmt(totalSpentAll, currency)} in ${monthLabel(viewing)}`
+                    : `You've spent ${fmt(totalSpentAll, currency)} so far this cycle`
+                } — ${Math.abs(trendPct)}% ${trendPct >= 0 ? "more" : "less"} than you spent in ${monthLabel(prevMonth)} (${fmt(prevTotalSpent, currency)}).`}
               </div>
             )}
             {trendLines.map((t) => (
@@ -292,7 +339,9 @@ export default async function DashboardPage({
             ))}
             {forecastReady && (
               <div className={`insight-line ${projDeltaPct > 0 ? "warn" : ""}`}>
-                {`🔮 At this pace you'll spend about ${fmt(projectedSpend, currency)} by the end of the cycle — ${projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`} your ${fmt(spendBudget, currency)} budget (fixed bills counted in full).`}
+                {`🔮 At this pace you'll spend about ${fmt(projectedSpend, currency)} by the end of the cycle — ${
+                  projDeltaPct >= 0 ? `${projDeltaPct}% over` : `${Math.abs(projDeltaPct)}% under`
+                } your ${fmt(spendBudget, currency)} budget (fixed bills counted in full).`}
               </div>
             )}
             {forecastWaiting && (
@@ -311,14 +360,24 @@ export default async function DashboardPage({
             {emiCats.map((c) => {
               const end = new Date(c.end_date!);
               const ended = end <= now;
-              const monthsLeft = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
+              const monthsLeft =
+                (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
               return (
                 <div key={c.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {c.name}
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", margin: "2px 0 6px" }}>
-                    {fmt(Number(c.ideal_plan_amount), currency)} / month · {ended ? "ended" : "ends"} {monthLabel(end)}
+                    {fmt(Number(c.ideal_plan_amount), currency)} / month · {ended ? "ended" : "ends"}{" "}
+                    {monthLabel(end)}
                   </div>
                   <span
                     style={{
@@ -337,11 +396,13 @@ export default async function DashboardPage({
             })}
           </div>
           {!isPast &&
-            emiCats.filter((c) => new Date(c.end_date!) <= now).map((c) => (
-              <div key={c.id + "-note"} style={{ fontSize: 12, color: "#6b7280", marginTop: 10 }}>
-                {`💡 ${c.name} ended — ${fmt(Number(c.ideal_plan_amount), currency)}/month is now free. Consider redirecting it to your Emergency Fund or SIP.`}
-              </div>
-            ))}
+            emiCats
+              .filter((c) => new Date(c.end_date!) <= now)
+              .map((c) => (
+                <div key={c.id + "-note"} style={{ fontSize: 12, color: "#6b7280", marginTop: 10 }}>
+                  {`💡 ${c.name} ended — ${fmt(Number(c.ideal_plan_amount), currency)}/month is now free. Consider redirecting it to your Emergency Fund or SIP.`}
+                </div>
+              ))}
         </div>
       )}
     </div>
